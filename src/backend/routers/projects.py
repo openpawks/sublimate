@@ -30,7 +30,7 @@ async def create_project(
     # TODO: authentication
     
     new_project = models.Project(
-        result = await db.execute(select(count()).select_from(models.Project))
+        result = await db.execute(select(count()).select_from(models.Project)).scalars().first() + 1 # fix
         project_count = result.scalar()
         root_dir=project.root_dir,
         agent_root_dir=project.agent_root_dir,
