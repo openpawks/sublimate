@@ -20,7 +20,12 @@ agents:
       # other agents
       - coder
       - tester
-
+    tools: # deny some commands, optional
+      - write_file # default: true
+      - read_file # default: true
+      - create_agent # default: false
+    file_access: # optional defaults, but you can limit it to save input tokens
+      - "./*"
     # OPTIONAL: but should auto detect
     description: Project Lead Orchestrator # nullable
     path: ./main.md # auto detect, optional
