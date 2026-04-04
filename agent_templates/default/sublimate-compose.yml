@@ -5,7 +5,7 @@ models:
   favorite-model: # this is a variable name 
   # these correspond to langchain kwargs for init_chat_model
     model_provider: deepseek 
-    model: deepseek-reasoner
+    model: deepseek-chat
     temperature: 0.4
     # should grab api keys from db?
   other-model:

@@ -13,3 +13,6 @@ mock.db
 # Virtual environments
 .venv
 .aider*
+
+.env
+tmp/*

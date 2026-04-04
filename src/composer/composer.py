@@ -16,13 +16,26 @@ class BaseAgent():
         agent_home,
         model,
         tools=[],
+        root_folder="",
     ):
-        self.name = ""
+        self.name = name 
         self.prompt = ""
         self.heartbeat = ""
         self.model = model
         self.context = []
-        self.agent_home = Path(agent_home)
+        self.agent_home = (
+            isinstance(agent_home, Path) and 
+            agent_home or 
+            Path(agent_home)
+        )
+        self.root_folder = (
+            root_folder and (
+                isinstance(agent_home, Path) and 
+                agent_home or 
+                Path(agent_home)
+            ) or
+            agent_home / ".."
+        )
         self.agent_file_paths = [
             (self.agent_home / f"{self.name}.md", "prompt"),
             (self.agent_home / "heartbeats" / f"{self.name}.md", "heartbeat")
@@ -60,16 +73,15 @@ class BaseAgent():
             self.load_file_for(context, filepath)
         return context
 
-    def load_agent(self, agent_home):
-        agent_home = self.agent_home
+    def load_agent(self):
         # TODO: compatibility with similar filepaths, heartbeats/{self.name}.md
         self.load_files(self.agent_file_paths)
 
         # TODO: compatibility with similar filenames like agent.md, AGENT.md, agents.md etc.
         self.load_files_for(self.context, (
-            agent_home / ".." / "AGENTS.md",
-            agent_home / ".." / "README.md",
-            *glob.glob(agent_home / ".." / "docs" / "*", recursive=True)
+            self.root_folder / "AGENTS.md",
+            self.root_folder / "README.md",
+            *glob.glob(self.root_folder / ".." / "docs" / "*", recursive=True)
         )) 
 
     # TODO: for dependencies, check agent_states to see if it has a report of what has been done from dependent agents.
@@ -124,9 +136,21 @@ class BaseAgent():
         )
 
 # this should parse a sublimate-compose.yml
-class Composer(): 
-    def __init__(self, filepath, agent_home, tools:dict):
-        self.agent_home = agent_home
+class BaseComposer(): 
+    def __init__(self, agent_home, tools:dict, root_folder=""):
+        self.agent_home = (
+            isinstance(agent_home, Path) and 
+            agent_home or 
+            Path(agent_home)
+        )
+        self.root_folder = (
+            root_folder and (
+                isinstance(agent_home, Path) and 
+                agent_home or 
+                Path(agent_home)
+            ) or
+            agent_home / ".."
+        )
 
         self.agents = []
         self.model = {}
@@ -134,7 +158,7 @@ class Composer():
         # TODO: find out how we will add tools to this... (theyre just a dict[str:function])
         self.tools = tools
 
-        with open(filepath) as f:
+        with open(agent_home / "sublimate-compose.yml") as f:
             self.data = yaml.safe_load(filepath)
 
         # check it's formatted correctly - needs
@@ -187,8 +211,11 @@ class Composer():
             [tool for tool in [
                 self.tools.get(x, None) 
                 for x in agent_data.get("tools")
-            ] if tool] # probably a better way to do this but your boy's a moron
+            ] if tool], # probably a better way to do this but your boy's a moron
+            self.root_folder,
         )
+
+        self.agents[agent].load_agent(self.agent_home)
 
 
     def init_agents(self, Agent=BaseAgent):
@@ -198,14 +225,18 @@ class Composer():
                 Agent
             )
 
-    def compose(self):
+    def up(self):
         # TODO: oh god
         pass
 
-class HeartbeatComposer(Composer):
+    def down(self):
+        # TODO: ohh goddddd
+        pass
+
+class HeartbeatComposer(BaseComposer):
     pass
 
-class PipelineComposer(Composer):
+class PipelineComposer(BaseComposer):
     pass
 
 
