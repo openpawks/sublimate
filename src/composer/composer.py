@@ -11,6 +11,27 @@ class BaseTask():
 
 # base agent
 class BaseAgent():
+    """
+        So an agent should interact with the codebase directly.
+        It'll write code, and use tools that may run tests or manage other agents
+        Ideally never given access to a terminal directly, but some people will do that anyway
+        Or if it's in a docker container I guess its fine, so we'll still add that tool.
+
+        This'll want... a few files.
+        agents/agent_name.md
+        agents/heartbeats/agent_name.md
+        
+        OPTIONALLY
+        agents/states/depencency_name.md # for each dependency 
+        project-root/README.md
+        project-root/AGENTS.md
+
+        It should assign its self to tasks... not sure how this'll work yet.
+
+        Try to complete open tasks.
+
+        Not sure if we can have versioning and stuff that seems difficult (for a 2 man team)
+    """
     def __init__(self,
         name:str,
         agent_home,
@@ -84,8 +105,6 @@ class BaseAgent():
             *glob.glob(self.root_folder / ".." / "docs" / "*", recursive=True)
         )) 
 
-    # TODO: for dependencies, check agent_states to see if it has a report of what has been done from dependent agents.
-    
     def format_message_history(
             message_history:list,
             include_prompt=True,
@@ -137,6 +156,19 @@ class BaseAgent():
 
 # this should parse a sublimate-compose.yml
 class BaseComposer(): 
+    """
+        So a composer should organise the agents,
+        What I want it to be able to do is read a configuration file, and then it'll just run
+
+        The name i've dubbed for this configuration file is sublimate-compose.yml 
+
+        So it'll manage agents... And stuff.
+
+        If you want a projects agents to do something differently, you'll have to stop and start this.
+        But it's on heartbeats anyway so no problems.
+
+        Server doesn't need to interact with this directly, just can manage the config files for the agents and composer.
+    """
     def __init__(self, agent_home, tools:dict, root_folder=""):
         self.agent_home = (
             isinstance(agent_home, Path) and 
@@ -225,6 +257,12 @@ class BaseComposer():
                 Agent
             )
 
+    def run_agent(self, name:str):
+        # TODO: agent invoke or something, and also write output to agent/states/agent_name.md
+        # should also ideally log this to the db for more logs and potentially better output...
+        # i want version control aswell... unsure on how to achieve this (can use git python i know.)
+        pass
+
     def up(self):
         # TODO: oh god
         pass
@@ -234,9 +272,15 @@ class BaseComposer():
         pass
 
 class HeartbeatComposer(BaseComposer):
+    """
+    Much like composer, but will run the agents on a cronjob according to the config.
+    """
     pass
 
 class PipelineComposer(BaseComposer):
+    """
+    Much like composer, but will run agents according to order in pipeline:list param
+    """
     pass
 
 
