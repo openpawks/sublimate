@@ -2,15 +2,18 @@
 
 An automated code management system. Using Sublimate, unlike other AI assisted development systems, sublimate is designed to be:
 
-# ROADMAP
-
-## Goals
+# Goals
 
 - Remotely accessible
 - Working in the background
 - Accessible from a CLI, TUI, web frontend, or by API
 - Writes robust tests
 - Multiple users
+- Easy to work with
+- Server should be lightweight, fast and efficient
+- (Hopefully) Verbose documentation for custom implementations and community support
+
+# ROADMAP
 
 ## Functionality
 
@@ -21,6 +24,14 @@ An automated code management system. Using Sublimate, unlike other AI assisted d
   - In order not to overwhelm context limits, and grasp just what needs to be known for each change
 - Add tasks for an agent to complete
   - Agents may add tasks when they find errors, and that may be completed by another
+
+# Tech stack
+| Library/Framework | Purpose |
+|-|-|
+| FastAPI | Server Backend |
+| Langchain | Connect LLMs to sublimate |
+| Sqlite/Postgres | Database management, early on we'll use Sqlite for testing and initial prototypes, planning to migrate to postgres |
+| Jinja2Templates/React | Frontend (webui) Jinja2Templates for initial prototypes, eventually planning for React |
 
 # This project is in development
 
