@@ -1,0 +1,87 @@
+# Visualize on https://erd.surge.sh
+# or https://quick-erd.surge.sh
+#
+# Relationship Types
+#  -    - one to one
+#  -<   - one to many
+#  >-   - many to one
+#  >-<  - many to many
+#  -0   - one to zero or one
+#  0-   - zero or one to one
+#  0-0  - zero or one to zero or one
+#  -0<  - one to zero or many
+#  >0-  - zero or many to one
+#
+////////////////////////////////////
+
+
+project
+-------
+id integer PK
+root_dir string
+agent_root_dir string
+creator_id integer FK - user.id
+created_at datetime
+
+
+message
+-------
+id integer PK
+role integer
+content string
+created_at datetime
+
+
+chat
+----
+id integer PK
+created_at datetime
+
+
+chat_to_message
+---------------
+chat_id integer PK FK -< chat.id
+message_id integer PK FK - message.id
+
+
+task
+----
+id integer PK
+project_id integer FK >0- project.id
+chat_id integer FK -0< chat.id
+created_at datetime
+
+
+user
+----
+id integer PK
+name string
+role integer
+password_hash string
+token string
+created_at datetime
+
+
+user_to_project
+---------------
+user_id integer PK FK >0- user.id
+project_id integer PK FK >0- project.id
+role integer
+
+
+# zoom: 1.000
+# view: (0, 0)
+# text-bg: #103c8b
+# text-color: #e8e6e3
+# diagram-bg: #1e2021
+# diagram-text: #e8e6e3
+# table-bg: #181a1b
+# table-text: #e8e6e3
+# project (565, 497)
+# message (576, 22)
+# chat (577, 176)
+# chat_to_message (32, 9)
+# task (47, 117)
+# user (563, 281)
+# user_to_project (39, 294)
+
