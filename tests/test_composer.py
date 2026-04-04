@@ -62,10 +62,10 @@ class TestBaseComposer():
 
     # tests go here.
     def test_init_chat_models(self):
-        pass
+        self.composer.init_chat_models() 
 
     def test_init_agents(self):
-        pass
+        self.init_agents() 
 
 
 class TestHeartbeatComposer():
