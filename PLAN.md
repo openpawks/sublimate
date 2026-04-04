@@ -114,18 +114,16 @@ please can someone do this or think of this!!! i have no clue how we'll do this.
 ### Help! I didn't understand anything
 
 Please!! make an issue on the github so I know what to explain better!
-
-docs: what i didnt understand
+`docs: what i didnt understand`
 
 Here's a bad example 
+`docs: this plan does not make any sense.`
 
-docs: this plan does not make any sense.
+Yes.. while it may _not_ make any sense... this doesn't help me!!
+Here's a better example
+`docs: i don't understand what X does`
 
-Yes.. while it may not make any sense... this doesn't help me!!
-Here's a better example!!
-
-docs: i don't understand what X does
-And then I know what i didn't explain!! and now look, we're both happy c: 
+And then I know what i didn't explain right!!
 
 ### Addendum
 What's really important here though is a lot of the code should be understood, so if you're generating with AI, ensure you know all the code and what it means.
