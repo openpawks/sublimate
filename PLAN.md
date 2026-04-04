@@ -66,11 +66,11 @@ not _too_ sure if we _need_ `tasks/`, that can be handled within our database i 
 
 ## sublimate-compose.yml schema 
 ```yaml
-# FORMAT
 # Example file
 
 models:
   favorite-model: # this is a variable name 
+  # these correspond to langchain kwargs for init_chat_model
     model_provider: deepseek 
     model: deepseek-reasoner
     temperature: 0.4
@@ -83,14 +83,25 @@ models:
 agents:
   main:
     model: favorite-model # REQUIRED
+    description: Project Lead Orchestrator # not really important 
     handoffs: # if no handoffs, only themselves, this lets other agent do a description or something and return summary. Not too sure goal of this, but deepseek thought it was a good idea.
       - main
       # other agents
       - coder
       - tester
-
-    # OPTIONAL: but should auto detect
-    description: Project Lead Orchestrator # nullable
+    allow_tools: # deny some commands, optional, if tools set, each need 
+      - write_file # default: true
+      - read_file # default: true
+      - create_agent # default: false
+      - delete_agent # default: false
+      - create_task # default: true
+      - close_task # default: true
+      - dangerously_run_commands # default: false (generally literally just run a command)
+    deny_tools: []
+    file_access: # optional defaults, but you can limit it to save input tokens
+      - "./*"
+    deny_file_access: # optional, no default - much like gitignore... although not a bad idea to have .sublimateignore (all models ignore)
+      - "./private/*"
     path: ./main.md # auto detect, optional
   coder:
     model: other-model
@@ -111,7 +122,6 @@ heartbeats:
     schedule: "30 * * * *"
     dependencies:
       - coder
-
 ```
 ## main.md schema
 ```
