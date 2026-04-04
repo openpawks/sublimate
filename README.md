@@ -12,6 +12,7 @@ An automated code management system. Using Sublimate, unlike other AI assisted d
 - Easy to work with
 - Server should be lightweight, fast and efficient
 - (Hopefully) Verbose documentation for custom implementations and community support
+- Provide a few agent templates to easily work with for quick startup
 
 # ROADMAP
 

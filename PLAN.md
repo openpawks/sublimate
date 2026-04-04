@@ -174,5 +174,398 @@ class HeartbeatOrchestrator:
             time.sleep(1)
 ```
 don't think we'll be using this exactly, but its a good boilerplate.
+
+Not sure if this will help, adding deepseek's idea of a flowchart for orchestrators...
+
+HIGH LEVEL OVERVIEW (AI GENERATED - NOT FINAL)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              ORCHESTRATOR CORE                                        │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
+│  │                         ORCHESTRATOR SUPERVISOR                                │   │
+│  │                      (Main Controller & Coordinator)                          │   │
+│  └───────────────────────────────┬──────────────────────────────────────────────┘   │
+│                                  │                                                   │
+│          ┌───────────────────────┼───────────────────────┐                          │
+│          │                       │                       │                          │
+│          ▼                       ▼                       ▼                          │
+│  ┌───────────────┐       ┌───────────────┐       ┌───────────────┐                 │
+│  │   Heartbeat   │       │    Task       │       │   Message     │                 │
+│  │ Orchestrator  │       │  Dispatcher   │       │   Router      │                 │
+│  └───────┬───────┘       └───────┬───────┘       └───────┬───────┘                 │
+│          │                       │                       │                          │
+│          ▼                       ▼                       ▼                          │
+│  ┌───────────────┐       ┌───────────────┐       ┌───────────────┐                 │
+│  │   Scheduler   │       │   Priority    │       │    Agent      │                 │
+│  │   (Cron)      │       │    Queue      │       │   Registry    │                 │
+│  └───────────────┘       └───────────────┘       └───────────────┘                 │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              EXECUTION LAYER                                         │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐   │
+│  │   main     │  │ researcher │  │   writer   │  │  monitor   │  │   tester   │   │
+│  │   Agent    │  │   Agent    │  │   Agent    │  │   Agent    │  │   Agent    │   │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘   │
+│        │               │               │               │               │           │
+│        └───────────────┴───────────────┴───────────────┴───────────────┘           │
+│                                      │                                              │
+│                                      ▼                                              │
+│                          ┌─────────────────────┐                                   │
+│                          │   LangChain Agents  │                                   │
+│                          │   & Tool Execution  │                                   │
+│                          └─────────────────────┘                                   │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+HEARTBEAT ORCHESTRATOR (AI GENERATED - NOT FINAL)
+```
+```
+```
+```
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         HEARTBEAT ORCHESTRATOR FLOW                                   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌──────────────────┐
+                              │   START (Every    │
+                              │    60 seconds)   │
+                              └────────┬─────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  Scan agents/heartbeats/ directory   │
+                    │  Find all *.heartbeat.md files       │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  For each heartbeat file found:      │
+                    │  - researcher.heartbeat.md           │
+                    │  - writer.heartbeat.md               │
+                    │  - monitor.heartbeat.md              │
+                    │  - main.heartbeat.md                 │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  Parse YAML frontmatter from file    │
+                    │  Extract: schedule, timeout,         │
+                    │  dependencies, priority, tasks       │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  Load agent state from:              │
+                    │  agents/agent_states/{agent}.state.md│
+                    │  Get last_run timestamp              │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                              ┌────────────────┐
+                              │ Should run now? │
+                              │ (Check cron     │
+                              │  expression)    │
+                              └────┬───────┬────┘
+                                   │       │
+                    NO ────────────┘       └─── YES
+                    │                             │
+                    ▼                             ▼
+            ┌─────────────┐              ┌─────────────────┐
+            │   SKIP      │              │ Check Dependency │
+            │   Agent     │              │   Status         │
+            └─────────────┘              └────────┬────────┘
+                                                   │
+                                                   ▼
+                                          ┌────────────────┐
+                                          │ Dependencies   │
+                                          │ satisfied?     │
+                                          └────┬───────┬───┘
+                                               │       │
+                                    NO ────────┘       └─── YES
+                                               │             │
+                                               ▼             ▼
+                                    ┌─────────────┐   ┌─────────────┐
+                                    │   WAIT      │   │  Execute    │
+                                    │   Skip      │   │  Heartbeat  │
+                                    │   this cycle│   │             │
+                                    └─────────────┘   └──────┬──────┘
+                                                             │
+                                                             ▼
+                                          ┌──────────────────────────────┐
+                                          │  Spawn agent subprocess or   │
+                                          │  direct LLM call with tasks  │
+                                          │                              │
+                                          │  Example tasks:              │
+                                          │  - Verify agent heartbeats   │
+                                          │  - Check disk space          │
+                                          │  - Validate API keys         │
+                                          │  - Run health checks         │
+                                          └──────────────┬───────────────┘
+                                                         │
+                                                         ▼
+                                          ┌──────────────────────────────┐
+                                          │  Apply timeout (default 30s) │
+                                          │  Wait for result             │
+                                          └──────────────┬───────────────┘
+                                                         │
+                                      ┌──────────────────┼──────────────────┐
+                                      │                  │                  │
+                                      ▼                  ▼                  ▼
+                              ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+                              │  SUCCESS    │    │  TIMEOUT    │    │  FAILED     │
+                              └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+                                     │                  │                  │
+                                     └──────────────────┼──────────────────┘
+                                                        │
+                                                        ▼
+                                          ┌──────────────────────────────┐
+                                          │  Update agent state file:    │
+                                          │  agents/agent_states/         │
+                                          │  {agent}.state.md             │
+                                          │                              │
+                                          │  Store:                      │
+                                          │  - last_run timestamp        │
+                                          │  - status (success/timeout/  │
+                                          │    failed)                    │
+                                          │  - result summary            │
+                                          │  - error message (if any)     │
+                                          └──────────────┬───────────────┘
+                                                         │
+                                                         ▼
+                                          ┌──────────────────────────────┐
+                                          │  Trigger recovery actions    │
+                                          │  based on heartbeat result:  │
+                                          │                              │
+                                          │  - Restart stale agents      │
+                                          │  - Send alerts to MAIN       │
+                                          │  - Log to monitoring system  │
+                                          │  - Clean up resources        │
+                                          └──────────────┬───────────────┘
+                                                         │
+                                                         ▼
+                                                    ┌─────────┐
+                                                    │  LOOP   │
+                                                    │  Next   │
+                                                    │  Agent  │
+                                                    └─────────┘
+```
+
+TASK DISPATCHER (AI GENERATED - NOT FINAL)
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           TASK DISPATCHER FLOW                                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌──────────────────┐
+                              │  Task Created    │
+                              │  (via API/CLI/   │
+                              │   Agent)         │
+                              └────────┬─────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  Store task in database:             │
+                    │  - description                       │
+                    │  - project_id                        │
+                    │  - assigned_agent (optional)         │
+                    │  - status = PENDING (0)              │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────────┐
+                    │  TaskOrchestrator picks up task      │
+                    │  (real-time or poll every 5 sec)     │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                              ┌────────────────┐
+                              │ Assigned agent │
+                              │ specified?     │
+                              └────┬───────┬───┘
+                                   │       │
+                         YES ──────┘       └───── NO
+                         │                          │
+                         ▼                          ▼
+              ┌──────────────────┐      ┌─────────────────────────┐
+              │ Use specified    │      │ Smart agent selection:  │
+              │ agent directly   │      │ - Analyze description   │
+              └────────┬─────────┘      │ - Check keywords        │
+                       │                │ - Match capabilities    │
+                       │                └───────────┬─────────────┘
+                       │                            │
+                       └────────────┬───────────────┘
+                                    │
+                                    ▼
+                    ┌──────────────────────────────────────┐
+                    │  Check if agent exists in registry   │
+                    │  If not, try to load from filesystem │
+                    └──────────────────┬───────────────────┘
+                                       │
+                          ┌────────────┴────────────┐
+                          │                         │
+                          ▼                         ▼
+                  ┌───────────────┐         ┌───────────────┐
+                  │ Agent found   │         │ Agent not     │
+                  └───────┬───────┘         │ found         │
+                          │                 └───────┬───────┘
+                          │                         │
+                          ▼                         ▼
+              ┌──────────────────────┐    ┌─────────────────────┐
+              │ Update task status:  │    │ Mark task as FAILED │
+              │ IN_PROGRESS (1)      │    │ Log error           │
+              └──────────┬───────────┘    └─────────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────────────────────────┐
+              │  Prepare agent context:                  │
+              │  - Load relevant codebase sections      │
+              │    (smart context selection)            │
+              │  - Load chat history (if chat_id set)   │
+              │  - Load project configuration           │
+              └──────────────────┬───────────────────────┘
+                                 │
+                                 ▼
+              ┌──────────────────────────────────────────┐
+              │  Execute task via LangChain agent:       │
+              │                                          │
+              │  Agent has access to tools:              │
+              │  - read_files                            │
+              │  - write_files                           │
+              │  - run_tests                             │
+              │  - search_codebase                       │
+              │  - git_operations                        │
+              │  - create_subtask                        │
+              └──────────────────┬───────────────────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+              ▼                  ▼                  ▼
+      ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+      │  SUCCESS    │    │  NEEDS      │    │  FAILED     │
+      │             │    │  MORE INFO  │    │             │
+      └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+             │                  │                  │
+             ▼                  ▼                  ▼
+      ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+      │ status =    │    │ Create      │    │ status =    │
+      │ DONE (2)    │    │ follow-up   │    │ FAILED (3)  │
+      │             │    │ task for    │    │             │
+      │ Store       │    │ user/agent  │    │ Store error │
+      │ result      │    │             │    │ message     │
+      └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+             │                  │                  │
+             └──────────────────┼──────────────────┘
+                                │
+                                ▼
+              ┌──────────────────────────────────────────┐
+              │  Notify subscribers:                     │
+              │  - WebSocket broadcast to connected UI   │
+              │  - Update project dashboard              │
+              │  - Trigger dependent tasks (if any)      │
+              └──────────────────────────────────────────┘
+```
+
+EXAMPLE OF PROJECT COORDINATION (AI GENERATED - NOT FINAL)#
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         AGENT HANDOFF & COORDINATION FLOW                            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                                    ┌─────────┐
+                                    │  USER   │
+                                    │  Input  │
+                                    └────┬────┘
+                                         │
+                                         ▼
+                              ┌──────────────────────┐
+                              │   MAIN Agent         │
+                              │   (Project Lead)     │
+                              │                      │
+                              │   Analyzes request:  │
+                              │   "Research X and    │
+                              │    implement Y"      │
+                              └──────────┬───────────┘
+                                         │
+                                         ▼
+                              ┌──────────────────────┐
+                              │  MAIN decides:       │
+                              │  This needs both     │
+                              │  research + coding   │
+                              └──────────┬───────────┘
+                                         │
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+                    ▼                    ▼                    ▼
+            ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+            │ Create Task  │    │ Create Task  │    │ Set          │
+            │ "Research X" │    │ "Implement Y"│    │ Dependency   │
+            │ assigned to  │    │ assigned to  │    │ Task 2       │
+            │ RESEARCHER   │    │ WRITER       │    │ waits on     │
+            │              │    │              │    │ Task 1       │
+            └──────┬───────┘    └──────┬───────┘    │ Task 1       │
+                   │                   │           └──────────────┘
+                   │                   │
+                   ▼                   ▼
+            ┌──────────────┐    ┌──────────────┐
+            │ RESEARCHER   │    │ WRITER       │
+            │ Agent runs:  │    │ (WAITING)    │
+            │ - Searches   │    │              │
+            │ - Gathers    │    │ Status:      │
+            │   info       │    │ BLOCKED      │
+            │ - Returns    │    │              │
+            │   findings   │    │              │
+            └──────┬───────┘    └──────┬───────┘
+                   │                   │
+                   │ Task 1 Complete   │
+                   └─────────┬─────────┘
+                             │
+                             ▼
+                    ┌────────────────────┐
+                    │ TaskOrchestrator   │
+                    │ detects Task 1     │
+                    │ completed          │
+                    └─────────┬──────────┘
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │ Unblock Task 2     │
+                    │ WRITER now has     │
+                    │ research context   │
+                    └─────────┬──────────┘
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │ WRITER Agent runs: │
+                    │ - Uses research    │
+                    │   findings         │
+                    │ - Writes code      │
+                    │ - Runs tests       │
+                    │ - Commits changes  │
+                    └─────────┬──────────┘
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │ Task 2 Complete    │
+                    │ Notify MAIN        │
+                    │ Return to user     │
+                    └────────────────────┘
+```
+
+```
+```
+```
+```
 ```
 ```
