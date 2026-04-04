@@ -36,6 +36,8 @@ async def create_project(
         agent_root_dir=project.agent_root_dir,
     )
 
+    # so really, we should also have project INIT, which creates heartbeats and stuff for the AI models.
+    
     db.add(new_project)
     await db.commit()
     await db.refresh(new_project)
@@ -107,6 +109,8 @@ async def update_project_full(
 async def delete_project(
     project_id: int
 ):
+    # TODO: authentication
+    
     # find check project exists
     result = await db.execute(select(models.Project).where(models.Project.id == project_id))
     project = result.scalars().first()
