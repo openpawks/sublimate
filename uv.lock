@@ -710,12 +710,14 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "langchain", extra = ["deepseek"] },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.135.3" },
     { name = "langchain", extras = ["deepseek"], specifier = ">=1.2.15" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 
 [[package]]

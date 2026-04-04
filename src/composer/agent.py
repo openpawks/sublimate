@@ -20,9 +20,17 @@ class BaseAgent():
 
     def add_dependency(agent:BaseAgent):
         return self.dependencies.add(agent)
+    
+    def load_file(self, field, filepath): # intent to set heartbeat, prompt & context
+        with open(filepath) as f:
+            setattr(self, field, f.read())
 
     def invoke():
-        message_history = get_chat_history()
+        message_history = get_chat_history() # query to like sqllite database or something
+        self.agent.invoke(
+            message_history["messages"]
+        )
 
+        # response goes to task?
 
 

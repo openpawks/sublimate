@@ -21,10 +21,15 @@ agents:
       # other agents
       - coder
       - tester
-    tools: # deny some commands, optional
+    allow_tools: # deny some commands, optional, if tools set, each need 
       - write_file # default: true
       - read_file # default: true
       - create_agent # default: false
+      - delete_agent # default: false
+      - create_task # default: true
+      - close_task # default: true
+      - dangerously_run_commands # default: false (generally literally just run a command)
+    deny_tools: []
     file_access: # optional defaults, but you can limit it to save input tokens
       - "./*"
     # OPTIONAL: but should auto detect
