@@ -1,1 +1,29 @@
-hi!!
+# Welcome to Sublimate
+
+An automated code management system. Using Sublimate, unlike other AI assisted development systems, sublimate is designed to be:
+
+# ROADMAP
+
+## Goals
+
+- Remotely accessible
+- Working in the background
+- Accessible from a CLI, TUI, web frontend, or by API
+- Writes robust tests
+- Multiple users
+
+## Functionality
+
+- Manage multiple projects from your interface of choice
+- Agents should be able to find errors when testing code
+- Agents should be able to run in the background
+- Some agents don't have to see the whole codebase to write new code, smartly select relevant areas of the codebase
+  - In order not to overwhelm context limits, and grasp just what needs to be known for each change
+- Add tasks for an agent to complete
+  - Agents may add tasks when they find errors, and that may be completed by another
+
+# This project is in development
+
+This project is in development
+
+
