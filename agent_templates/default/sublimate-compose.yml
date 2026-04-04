@@ -30,8 +30,12 @@ agents:
       - close_task # default: true
       - dangerously_run_commands # default: false (generally literally just run a command)
     deny_tools: []
-    file_access: # optional defaults, but you can limit it to save input tokens
+    file_access: # optional defaults, but you can limit it to save input tokens (from project root these are)
       - "./*"
+    read_only_file_access:
+      - "./tests/*"
+    deny_file_access:
+      - "./private/*"
     # OPTIONAL: but should auto detect
     description: Project Lead Orchestrator # nullable
     path: ./main.md # auto detect, optional

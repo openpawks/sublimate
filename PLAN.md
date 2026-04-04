@@ -98,8 +98,10 @@ agents:
       - close_task # default: true
       - dangerously_run_commands # default: false (generally literally just run a command)
     deny_tools: []
-    file_access: # optional defaults, but you can limit it to save input tokens
+    file_access: # from project root, optional defaults, but you can limit it to save input tokens
       - "./*"
+    read_file_access:
+      - "./tests/*"
     deny_file_access: # optional, no default - much like gitignore... although not a bad idea to have .sublimateignore (all models ignore)
       - "./private/*"
     path: ./main.md # auto detect, optional
