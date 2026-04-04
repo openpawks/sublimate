@@ -15,7 +15,7 @@ class BaseAgent():
         name:str,
         agent_home,
         model,
-        tools=[]
+        tools=[],
     ):
         self.name = ""
         self.prompt = ""
@@ -23,6 +23,10 @@ class BaseAgent():
         self.model = model
         self.context = []
         self.agent_home = Path(agent_home)
+        self.agent_file_paths = [
+            (self.agent_home / f"{self.name}.md", "prompt"),
+            (self.agent_home / "heartbeats" / f"{self.name}.md", "heartbeat")
+        ]
         self.dependencies = set({})
         self.get_chat_history = lambda x: [] 
 
@@ -59,10 +63,7 @@ class BaseAgent():
     def load_agent(self, agent_home):
         agent_home = self.agent_home
         # TODO: compatibility with similar filepaths, heartbeats/{self.name}.md
-        self.load_files((
-            (agent_home / f"{self.name}.md", "prompt"),
-            (agent_home / "heartbeats" / f"{self.name}.md", "heartbeat")
-        ))
+        self.load_files(self.agent_file_paths)
 
         # TODO: compatibility with similar filenames like agent.md, AGENT.md, agents.md etc.
         self.load_files_for(self.context, (
@@ -150,6 +151,7 @@ class Composer():
     def fetch_api_key_for_provider(self, provider:str) -> str:
         # TODO:
         # might have to get this from db not sure...
+        # can run tests with mock i guess.
         pass
     
     def init_chat_model(self, model_data):
@@ -170,6 +172,11 @@ class Composer():
             )
 
     def init_agent(self, agent_data, Agent=BaseAgent):
+        # TODO: add support for param to set different:
+        # heartbeat path (currently read from agent_home/heartbeats/name.md)
+        # agent path (currently read from agent_home/name.md)
+        # state? path (currently only read from agent_home/states/dependency_name.md) [Low importance]
+        
         self.agents[agent] = Agent(
             agent,
             self.agent_home,
@@ -182,6 +189,7 @@ class Composer():
                 for x in agent_data.get("tools")
             ] if tool] # probably a better way to do this but your boy's a moron
         )
+
 
     def init_agents(self, Agent=BaseAgent):
         for agent in self.data.get("agents").keys():
