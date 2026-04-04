@@ -1,4 +1,4 @@
-# MUTE ME
+# PLAN
 okay, so seems like a "project" should manage each "agent" like this [according to deepseek](https://chat.deepseek.com/share/3ehnbv327upq3spow6)
 DEEPSEEK SUGGESTED IDEA - NOT FINAL
 ```
