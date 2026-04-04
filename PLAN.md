@@ -1,6 +1,6 @@
 # PLAN
 okay, so seems like a "project" should manage each "agent" like this [according to deepseek](https://chat.deepseek.com/share/3ehnbv327upq3spow6)
-DEEPSEEK SUGGESTED IDEA - NOT FINAL
+## DEEPSEEK SUGGESTED IDEA - NOT FINAL
 ```
 your-project-root/
 ├── AGENTS.md
@@ -37,22 +37,18 @@ so the plan is that it'll be dynamically generated per project from filestructur
 what we _could_ do is have a nice simple interface, but still lets you understand the file structure.
 inside agents_home, maybe there should be a `tasks/` or `issues/` thing for each agent to see issue status blah blah blah
 
-my adapted one...
-WAITING APPROVAL
+## Project idea... 
 ```
 your-project-root/
 ├── AGENTS.md
 ├── agents/
+│   ├── sublimate-compose.yml 
 │   ├── main.md
 │   ├── researcher.md
 │   ├── writer.md
 │   ├── monitor.md           # Dedicated monitoring agent
 │   │
-│   ├── tasks/
-│   │   ├── uuid/ # if new one unaccounted for, will add to database or something idk
-│   │   │   ├── task.md # or issue summary? 
-# YOU _COULD_ STORE CHAT HISTORY HERE... but probably can keep it inside our db for quick querying and stuff idk
-│   │  
+│   ├── tasks.yml # OPTIONAL, project not dependent on these, i think should be an export.
 │   │ 
 │   ├── heartbeats/          # NEW: Per-agent heartbeat directory
 │   │   ├── researcher.heartbeat.md
@@ -60,43 +56,71 @@ your-project-root/
 │   │   ├── monitor.heartbeat.md
 │   │   └── main.heartbeat.md
     │
-    ├── agent_states/        # Track last heartbeat results
+    ├── agent_states/        # Track last heartbeat results, maybe this could have timestamps?
         │   ├── researcher.state.md
         │   ├── writer.state.md
         │   └── monitor.state.md
         └── ...
-│   │
-│   └── shared/
-│       └── heartbeat_schema.md  # Common format specification
-│
-└── docs/
 ```
 not _too_ sure if we _need_ `tasks/`, that can be handled within our database i guess.
 
+## sublimate-compose.yml schema 
+```yaml
+# FORMAT
+# Example file
+
+models:
+  favorite-model: # this is a variable name 
+    model_provider: deepseek 
+    model: deepseek-reasoner
+    temperature: 0.4
+    # should grab api keys from db?
+  other-model:
+    model-provider: deepseek
+    model: deepseek-chat
+    # should grab IN CODE (don't store here) api key for provider from database?
+
+agents:
+  main:
+    model: favorite-model # REQUIRED
+    handoffs: # if no handoffs, only themselves, this lets other agent do a description or something and return summary. Not too sure goal of this, but deepseek thought it was a good idea.
+      - main
+      # other agents
+      - coder
+      - tester
+
+    # OPTIONAL: but should auto detect
+    description: Project Lead Orchestrator # nullable
+    path: ./main.md # auto detect, optional
+  coder:
+    model: other-model
+  tester:
+    model: other-model
+
+heartbeats:
+  main:
+    schedule: "* 1 * * *" # like cron, required
+    timeout: 30s # default 30s, optional param
+    dependencies: # wait for these to finish first, optional param
+      - coder
+      - tester
+    path: ./heartbeats/main_heartbeat.md # auto detect, optional
+  coder:
+    schedule: "30 * * * *"
+  tester:
+    schedule: "30 * * * *"
+    dependencies:
+      - coder
+
+```
 ## main.md schema
 ```
----
-name: main
-desc: Project lead orchestrator and delegator
-model: openai/gpt-4o
-temperature: 0.7
-handoffs: researcher, writer
----
-
 You are the project lead. Your job is to route requests to the correct specialized agent.
 If the user asks for research, hand off to `researcher`.
 If the user asks to write code, hand off to `writer`.
 ```
 ## *.heartbeat.md schema
 ```
----
-agent: monitor
-schedule: "* * * * *"        # Every minute LOOKS A LOT LIKE CRONJOB SYNTAX
-timeout: 30s
-priority: high
-dependencies: researcher, writer   # Wait for these to finish first
----
-
 # Monitor Agent - System Health
 
 ## Health Checks

@@ -1,0 +1,46 @@
+# FORMAT
+# Example file
+
+models:
+  favorite-model: # this is a variable name 
+    model_provider: deepseek 
+    model: deepseek-reasoner
+    temperature: 0.4
+    # should grab api keys from db?
+  other-model:
+    model-provider: deepseek
+    model: deepseek-chat
+    # should grab IN CODE (don't store here) api key for provider from database?
+
+agents:
+  main:
+    model: favorite-model # REQUIRED
+    handoffs: # if no handoffs, only themselves, this lets other agent do a description or something and return summary. Not too sure goal of this, but deepseek thought it was a good idea.
+      - main
+      # other agents
+      - coder
+      - tester
+
+    # OPTIONAL: but should auto detect
+    description: Project Lead Orchestrator # nullable
+    path: ./main.md # auto detect, optional
+  coder:
+    model: other-model
+  tester:
+    model: other-model
+
+heartbeats:
+  main:
+    schedule: "* 1 * * *" # like cron, required
+    timeout: 30s # default 30s, optional param
+    dependencies: # wait for these to finish first, optional param
+      - coder
+      - tester
+    path: ./heartbeats/main_heartbeat.md # auto detect, optional
+  coder:
+    schedule: "30 * * * *"
+  tester:
+    schedule: "30 * * * *"
+    dependencies:
+      - coder
+    
