@@ -119,7 +119,7 @@ example in my [shared deepseek chat](https://chat.deepseek.com/share/3ehnbv327up
 we could also automatically generate these with AI and stuff, what people are going to want us to do.
 we can have a few presets, easy to select and choose from (which would definitely help, paperclip has no such thing)
 
-DEEPSEEK ORCHESTRATOR EXAMPLE
+## ORCHESTRATOR EXAMPLE (AI GENERATED - NOT FINAL)
 ```python
 # heartbeat_orchestrator.py
 import schedule
@@ -177,8 +177,7 @@ don't think we'll be using this exactly, but its a good boilerplate.
 
 Not sure if this will help, adding deepseek's idea of a flowchart for orchestrators...
 
-HIGH LEVEL OVERVIEW (AI GENERATED - NOT FINAL)
-
+## HIGH LEVEL OVERVIEW (AI GENERATED - NOT FINAL)
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                              ORCHESTRATOR CORE                                        │
@@ -227,12 +226,7 @@ HIGH LEVEL OVERVIEW (AI GENERATED - NOT FINAL)
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-HEARTBEAT ORCHESTRATOR (AI GENERATED - NOT FINAL)
-```
-```
-```
-```
-
+## HEARTBEAT ORCHESTRATOR (AI GENERATED - NOT FINAL)
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                         HEARTBEAT ORCHESTRATOR FLOW                                   │
@@ -362,7 +356,7 @@ HEARTBEAT ORCHESTRATOR (AI GENERATED - NOT FINAL)
                                                     └─────────┘
 ```
 
-TASK DISPATCHER (AI GENERATED - NOT FINAL)
+## TASK DISPATCHER (AI GENERATED - NOT FINAL)
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                           TASK DISPATCHER FLOW                                       │
@@ -477,7 +471,7 @@ TASK DISPATCHER (AI GENERATED - NOT FINAL)
               └──────────────────────────────────────────┘
 ```
 
-EXAMPLE OF PROJECT COORDINATION (AI GENERATED - NOT FINAL)#
+## EXAMPLE OF PROJECT COORDINATION (AI GENERATED - NOT FINAL)#
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                         AGENT HANDOFF & COORDINATION FLOW                            │
@@ -561,11 +555,4 @@ EXAMPLE OF PROJECT COORDINATION (AI GENERATED - NOT FINAL)#
                     │ Notify MAIN        │
                     │ Return to user     │
                     └────────────────────┘
-```
-
-```
-```
-```
-```
-```
 ```
