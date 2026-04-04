@@ -1,6 +1,6 @@
 # PLAN
 okay, so seems like a "project" should manage each "agent" like this [according to deepseek](https://chat.deepseek.com/share/3ehnbv327upq3spow6)
-## DEEPSEEK SUGGESTED IDEA - NOT FINAL
+## DEEPSEEK'S PLAN [THIS IS NOT WHAT WE WILL IMPLEMENT] 
 ```
 your-project-root/
 ├── AGENTS.md
@@ -37,7 +37,7 @@ so the plan is that it'll be dynamically generated per project from filestructur
 what we _could_ do is have a nice simple interface, but still lets you understand the file structure.
 inside agents_home, maybe there should be a `tasks/` or `issues/` thing for each agent to see issue status blah blah blah
 
-## Project idea... 
+# Agent Home Tree
 ```
 your-project-root/
 ├── AGENTS.md
@@ -51,15 +51,15 @@ your-project-root/
 │   ├── tasks.yml # OPTIONAL, project not dependent on these, i think should be an export.
 │   │ 
 │   ├── heartbeats/          # NEW: Per-agent heartbeat directory
-│   │   ├── researcher.heartbeat.md
-│   │   ├── writer.heartbeat.md
-│   │   ├── monitor.heartbeat.md
-│   │   └── main.heartbeat.md
+│   │   ├── researcher.md
+│   │   ├── writer.md
+│   │   ├── monitor.md
+│   │   └── main.md
     │
-    ├── agent_states/        # Track last heartbeat results, maybe this could have timestamps?
-        │   ├── researcher.state.md
-        │   ├── writer.state.md
-        │   └── monitor.state.md
+    ├── states/        # Track last heartbeat results, maybe this could have timestamps?
+        │   ├── researcher.md
+        │   ├── writer.md
+        │   └── monitor.md
         └── ...
 ```
 not _too_ sure if we _need_ `tasks/`, that can be handled within our database i guess.
