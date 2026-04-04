@@ -3,6 +3,7 @@
 
 models:
   favorite-model: # this is a variable name 
+  # these correspond to langchain kwargs for init_chat_model
     model_provider: deepseek 
     model: deepseek-reasoner
     temperature: 0.4
