@@ -1,6 +1,6 @@
 # Contributing to Sublimate
 
-Thank you for your interest in contributing to Sublimate! 
+Thank you for your interest in contributing to Sublimate!
 
 We deeply value every contribution to this project. Open source thrives when developers share their expertise, creativity, and passion. Whether you're fixing a typo, optimizing performance, adding a feature, or helping with documentation — your work directly impacts researchers and developers worldwide. Code contributions are not the only way to help: answering questions, reporting bugs, and improving documentation are equally valuable. We carefully review all PRs and are genuinely excited to merge contributions that enhance the project. This is truly a community-driven project, and we're honored to have you join us.
 
@@ -22,13 +22,33 @@ We deeply value every contribution to this project. Open source thrives when dev
 
 ## 💻 Development Workflow
 
+We use `uv` to manage the environment. You should install `uv`, as our pre-commit hooks are configured for `uv`.
+
+### Install pre-commit hooks & environment configuration
+
+Install our environment by running
+```
+uv sync
+```
+And to install pre commit checks, run
+```
+uv run pre-commit install
+```
+It is best practice to use the pre-commit hooks.
+
 ### Configuration
 
 Never commit sensitive information like API keys or passwords. Configuration is typically done through the web UI.
 
 ### Testing
 
-Run tests before submitting PRs, we plan to add a test suite soon.
+Run tests before submitting PRs, however this _should_ be configured by our pre-commit checks. If you see any errors when committing, please fix them and then commit.
+If you add a feature, it's reccomended to also add tests for that new feature, so that the rest of us don't accidentally break it.
+
+To run a test, do
+```
+uv run pytest
+```
 
 ## 📋 Pull Request Process
 
@@ -46,7 +66,7 @@ We will review your pull request and either merge it, request changes, or close 
 ## 🤝 Community
 
 - **Issues**: Check existing issues before opening new ones
-- **Wiki**: Contribute to building our wiki! 
+- **Wiki**: Contribute to building our wiki!
 
 ## 📝 Code of Conduct
 

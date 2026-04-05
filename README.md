@@ -34,6 +34,9 @@ An automated code management system. Using Sublimate, unlike other AI assisted d
 | Sqlite/Postgres | Database management, early on we'll use Sqlite for testing and initial prototypes, planning to migrate to postgres |
 | Jinja2Templates/React | Frontend (webui) Jinja2Templates for initial prototypes, eventually planning for React |
 
+# Contributing
+If you want to contribute, please read the **CONTRIBUTING.md**
+
 # Documentation
 
 Comprehensive documentation is available for key components:
@@ -45,5 +48,3 @@ Comprehensive documentation is available for key components:
 # This project is in development
 
 This project is in development
-
-
