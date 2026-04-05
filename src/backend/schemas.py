@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, String
+from pydantic import BaseModel, Field
 
 
 class UserBase(BaseModel):
@@ -74,5 +74,5 @@ class TaskResponse(TaskBase):
 
 class HeartbeatBase(BaseModel):
     cron: str
-    dependencies: list[String]  # TODO: fix lmao
+    dependencies: list[str]  # TODO: fix lmao
     content: str

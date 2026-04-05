@@ -14,10 +14,10 @@ POST   /users/me/change-password - Change password
 ```
 
 ## Project management
-| METHODS | ROUTE | PURPOSE | COMPLETED? |
-|-|-|-|-|
-| GET,POST | /projects | List all projects for user | NO,YES |
-| PATCH,PUT,DELETE | /projects/{project_id} |  Update and delete project, we should make it manage the sublimate-compose.yml aswell as the db ) | SOME,, |
+| METHODS | ROUTE | PURPOSE                                                                                          | COMPLETED? |
+|-|-|--------------------------------------------------------------------------------------------------|------------|
+| GET,POST | /projects | GET lists all projects for user, POST creates a project                                          | YES,YES    |
+| PATCH,PUT,DELETE | /projects/{project_id} | Update and delete project, we should make it manage the sublimate-compose.yml aswell as the db ) | SOME,,     |
 
 ## Task management
 | METHODS | ROUTE | PURPOSE | COMPLETED? |
