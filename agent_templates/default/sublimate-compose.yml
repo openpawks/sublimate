@@ -4,14 +4,18 @@
 models:
   favorite-model: # this is a variable name 
   # these correspond to langchain kwargs for init_chat_model
-    model_provider: deepseek 
-    model: deepseek-chat
-    temperature: 0.4
+    #model_provider: deepseek 
+    #model: deepseek-chat
+    #temperature: 0.4
     # should grab api keys from db?
+    model_provider: ollama
+    model: qwen3.5:0.8b
   other-model:
-    model-provider: deepseek
-    model: deepseek-chat
+    #model-provider: deepseek
+    #model: deepseek-chat
     # should grab IN CODE (don't store here) api key for provider from database?
+    model_provider: ollama
+    model: qwen3.5:0.8b
 
 agents:
   main:

@@ -1,4 +1,4 @@
-from langchain.models import init_chat_model
+from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
 
 from pathlib import Path
@@ -49,17 +49,19 @@ class BaseAgent():
             agent_home or 
             Path(agent_home)
         )
+        if not os.path.exists(self.agent_home):
+            raise FileNotFoundError(f"{self.agent_home} not found, cwd is {os.getcwd()}")
         self.root_folder = (
             root_folder and (
-                isinstance(agent_home, Path) and 
-                agent_home or 
-                Path(agent_home)
+                isinstance(root_folder, Path) and 
+                root_folder or 
+                Path(root_folder)
             ) or
-            agent_home / ".."
+            self.agent_home / ".."
         )
         self.agent_file_paths = [
-            (self.agent_home / f"{self.name}.md", "prompt"),
-            (self.agent_home / "heartbeats" / f"{self.name}.md", "heartbeat")
+            ("prompt", self.agent_home / f"{self.name}.md"),
+            ("heartbeat", self.agent_home / "heartbeats" / f"{self.name}.md")
         ]
         self.dependencies = set({})
         self.get_chat_history = lambda x: [] 
@@ -69,23 +71,23 @@ class BaseAgent():
             tools=tools
         )
 
-    def add_dependency(agent:BaseAgent):
+    def add_dependency(agent):
         return self.dependencies.add(agent)
-    
+
     def load_file(self, field, filepath): # intent to set heartbeat, prompt & context
         if os.path.exists(filepath):
             with open(filepath, encoding="utf-8") as f:
                 setattr(self, field, f.read())
             return
-        raise FileNotFoundError
+        raise FileNotFoundError(filepath)
 
     def load_files(self, files_to_load):
         for field, filepath in files_to_load:
             self.load_file(field, filepath)
 
     def load_file_for(self, context, filepath): # intent to set heartbeat, prompt & context
-        if os.path.exists(filepath, encoding="utf-8"):
-            with open(filepath) as f:
+        if os.path.exists(filepath):
+            with open(filepath, encoding="utf-8") as f:
                 context.append((filepath, f.read()))
         return context
     
@@ -102,10 +104,11 @@ class BaseAgent():
         self.load_files_for(self.context, (
             self.root_folder / "AGENTS.md",
             self.root_folder / "README.md",
-            *glob.glob(self.root_folder / ".." / "docs" / "*", recursive=True)
+            *glob.glob(str(self.root_folder / ".." / "docs" / "*"), recursive=True)
         )) 
 
     def format_message_history(
+            self,
             message_history:list,
             include_prompt=True,
             include_heartbeat=True,
@@ -117,14 +120,22 @@ class BaseAgent():
             include_prompt and self.prompt,
             include_heartbeat and self.heartbeat,
             include_context_files and "\n".join(
-                [f"{filepath}\n```{file_content}```", for filepath, file_content in self.context]
+                [f"{filepath}\n```{file_content}```" for filepath, file_content in self.context]
             ),
             include_dependencies and "\n".join(
-                [f"{filepath}\n```{file_content}```", for filepath, file_content in self.load_files_for(
+                [f"{filepath}\n```{file_content}```" for filepath, file_content in self.load_files_for(
                     [], 
                     [
                         item for sublist
-                        in [glob.glob(self.agent_home / "states" / f"{dependency.name}.md" for dependency in self.dependencies)] 
+                        in [
+                                glob.glob(
+                                    str(
+                                        self.agent_home / 
+                                        "states" / 
+                                        f"{dependency.name}.md"
+                                )) 
+                                for dependency in self.dependencies
+                        ] 
                         for item in sublist
                     ]
                 )]
@@ -138,7 +149,7 @@ class BaseAgent():
             ]
         }
 
-    def invoke(message_history:list, **kwargs): # maybe wait for dependencies? how? idk...
+    def invoke(self, message_history:list, **kwargs): # maybe wait for dependencies? how? idk...
         return self.agent.invoke(
             format_message_history(
                 message_history, 
@@ -146,7 +157,7 @@ class BaseAgent():
             )
         )
 
-    def ainvoke(message_history:list, **kwargs):
+    def ainvoke(self, message_history:list, **kwargs):
         return self.agent.ainvoke(
             format_message_history(
                 message_history, 
@@ -177,21 +188,24 @@ class BaseComposer():
         )
         self.root_folder = (
             root_folder and (
-                isinstance(agent_home, Path) and 
-                agent_home or 
-                Path(agent_home)
+                isinstance(root_folder, Path) and 
+                root_folder or 
+                Path(root_folder)
             ) or
-            agent_home / ".."
+            self.agent_home / ".."
         )
 
-        self.agents = []
-        self.model = {}
+        self.agents = {} 
+        self.models = {}
 
         # TODO: find out how we will add tools to this... (theyre just a dict[str:function])
         self.tools = tools
-
-        with open(agent_home / "sublimate-compose.yml") as f:
-            self.data = yaml.safe_load(filepath)
+        filepath = (self.agent_home / "sublimate-compose.yml")
+        if os.path.exists(filepath):
+            with open(filepath) as f:
+                self.data = yaml.safe_load(f)
+        else:
+            raise FileNotFoundError(f"{filepath} not found! You need a sublimate-compose.yml if you want to use compose.")
 
         # check it's formatted correctly - needs
         # models
@@ -210,7 +224,7 @@ class BaseComposer():
         # can run tests with mock i guess.
         pass
     
-    def init_chat_model(self, model_data):
+    def init_chat_model(self, model, model_data):
         self.models[model] = init_chat_model(
             **model_data,
             api_key=self.fetch_api_key_for_provider(
@@ -224,10 +238,11 @@ class BaseComposer():
     def init_chat_models(self):
         for model in self.data.get("models").keys():
             self.init_chat_model(
+                model,
                 self.data.get("models").get(model)
             )
 
-    def init_agent(self, agent_data, Agent=BaseAgent):
+    def init_agent(self, agent, agent_data, Agent=BaseAgent):
         # TODO: add support for param to set different:
         # heartbeat path (currently read from agent_home/heartbeats/name.md)
         # agent path (currently read from agent_home/name.md)
@@ -242,17 +257,18 @@ class BaseComposer():
             )],
             [tool for tool in [
                 self.tools.get(x, None) 
-                for x in agent_data.get("tools")
+                for x in agent_data.get("tools", [])
             ] if tool], # probably a better way to do this but your boy's a moron
             self.root_folder,
         )
 
-        self.agents[agent].load_agent(self.agent_home)
+        self.agents[agent].load_agent()
 
 
     def init_agents(self, Agent=BaseAgent):
         for agent in self.data.get("agents").keys():
             self.init_agent(
+                agent,
                 self.data.get("agents").get(agent),
                 Agent
             )
