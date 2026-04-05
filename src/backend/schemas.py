@@ -46,11 +46,11 @@ class ChatResponse(ChatBase):
     created_at: datetime
 
 class TaskBase(BaseModel):
-    project_id: int
     chat_id: int
 
 class TaskCreate(TaskBase):
     pass
 
 class TaskResponse(TaskBase):
+    project_id: int
     created_at: datetime

@@ -1,2 +1,15 @@
 # nvim 99 prompts
 tmp/*
+.idea/
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.coverage
+.python-version
+.env
+
+# Virtual environments
+.venv/
