@@ -5,8 +5,11 @@ from croniter import croniter
 from datetime import datetime
 
 from pathlib import Path
+from dotenv import load_dotenv
+
 import os, glob, yaml, asyncio, json
 
+load_dotenv()
 
 # base task, handles for issues
 class BaseTask:
@@ -113,6 +116,10 @@ class BaseAgent:
             ),
         )
 
+    def get_task_context_as_messages(self):
+        # TODO: have to write this. Anyone can write this.
+        return []
+
     def format_message_history(
         self,
         message_history: list,
@@ -143,9 +150,7 @@ class BaseAgent:
                             for sublist in [
                                 glob.glob(
                                     str(
-                                        self.agent_home
-                                        / "states"
-                                        / f"{dependency.name}.md"
+                                        self.agent_home / "states" / f"{dependency.name}_*.md" # TODO:: order by earliest to latest.
                                     )
                                 )
                                 for dependency in self.dependencies
@@ -174,6 +179,48 @@ class BaseAgent:
             self.format_message_history(message_history, **kwargs)  # type: ignore
         )
 
+    async def run(**kwargs):
+        """
+        Run an agent and save its output to a state file.
+
+        Args:
+            name: Name of the agent to run
+            message_history: Optional list of messages to provide as context
+            **kwargs: Additional arguments passed to agent.invoke
+
+        Returns:
+            Agent output
+        """
+        message_history = self.get_task_context_as_messages()
+
+        if message_history is None:
+            message_history = []
+
+        output = await self.ainvoke(message_history, **kwargs)
+
+        # Save output to agent/states/agent_name.md
+        states_dir = self.agent_home / "states"
+        states_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        state_file = states_dir / f"{name}_{timestamp}.md"
+
+        # Convert output to string if not already
+        if isinstance(output, dict):
+            output_str = json.dumps(output, indent=2, default=str)
+        else:
+            output_str = str(output)
+
+        with open(state_file, "w", encoding="utf-8") as f:
+            f.write(f"# Agent Run: {self.name}\n")
+            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+            f.write(f"Message history length: {len(message_history)}\n")
+            f.write("\n## Output\n")
+            f.write("```\n")
+            f.write(output_str)
+            f.write("\n```\n")
+
+        return output
 
 # this should parse a sublimate-compose.yml
 class BaseComposer:
@@ -205,7 +252,6 @@ class BaseComposer:
         self.agents = {}
         self.models = {}
 
-        # TODO: find out how we will add tools to this... (theyre just a dict[str:function])
         self.tools = tools
         filepath = self.agent_home / "sublimate-compose.yml"
         if os.path.exists(filepath):
@@ -235,7 +281,8 @@ class BaseComposer:
         # TODO:
         # might have to get this from db not sure...
         # can run tests with mock i guess.
-        return "dummy-api-key"
+        # TEMPORARY:
+        return os.environ.get("TEST_API_TOKEN")
 
     def get_agent(self, name):
         return self.agents.get(name, None)
@@ -287,50 +334,11 @@ class BaseComposer:
         self.init_chat_models()
         self.init_agents()
 
-    def run_agent(self, name: str, message_history: list | None = None, **kwargs):
-        """
-        Run an agent and save its output to a state file.
-
-        Args:
-            name: Name of the agent to run
-            message_history: Optional list of messages to provide as context
-            **kwargs: Additional arguments passed to agent.invoke
-
-        Returns:
-            Agent output
-        """
-        if message_history is None:
-            message_history = []
-
+    def schedule_agent(self, name: str): 
         agent = self.get_agent(name)
         if not agent:
-            raise ValueError(f"Agent '{name}' not found")
-
-        output = agent.invoke(message_history, **kwargs)
-
-        # Save output to agent/states/agent_name.md
-        states_dir = self.agent_home / "states"
-        states_dir.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        state_file = states_dir / f"{name}_{timestamp}.md"
-
-        # Convert output to string if not already
-        if isinstance(output, dict):
-            output_str = json.dumps(output, indent=2, default=str)
-        else:
-            output_str = str(output)
-
-        with open(state_file, "w", encoding="utf-8") as f:
-            f.write(f"# Agent Run: {name}\n")
-            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            f.write(f"Message history length: {len(message_history)}\n")
-            f.write("\n## Output\n")
-            f.write("```\n")
-            f.write(output_str)
-            f.write("\n```\n")
-
-        return output
+            raise KeyError(f"'{name}' agent not defined in config, or this hasn't been initialised")
+        return agent.run
 
     # usability functions
     def get_heartbeats_from_settings(self):
@@ -341,9 +349,9 @@ class BaseComposer:
             return self.get_heartbeats_from_settings().get(name, {})
         else:
             return {}
-
-    def get_pipeline(self):
-        return self.data.get("pipeline", {})
+    
+    def get_pipeline_from_settings(self):
+        return self.data.get("pipeline", [])
 
     def get_agents(self):
         return self.agents
@@ -365,11 +373,10 @@ class BaseComposer:
         # TODO: ohh goddddd
         pass
 
-
 class Heartbeat:
-    def __init__(self, agent, cron):
-        self.agent = agent
+    def __init__(self, cron, callback):
         self.cron = cron
+        self.callback = callback
         self.current = None
 
     def get_next(self):
@@ -387,18 +394,10 @@ class Heartbeat:
             await self.wait_until_datetime(self.get_next())
             await self.abeat()
 
-    def get_task_context_as_messages(self):
-        # TODO: have to write this. Anyone can write this.
-        return []
-
     def beat(self):
         # TODO: invoke with task or active task etc.
         # we should probably also save task data incase program stops suddenly
-        return self.agent.invoke(self.get_task_context_as_messages())
-
-    def abeat(self):
-        # invoke agent, asynchronously i guess
-        return self.agent.ainvoke(self.get_task_context_as_messages())
+        return self.callback() 
 
     def start(self):
         if self.current:
@@ -418,16 +417,22 @@ class HeartbeatComposer(BaseComposer):
     Much like composer, but will run the agents on a cronjob according to the config.
     """
 
-    def __init__(self, agent_home, tools: dict, root_folder=""):
-        super().__init__(agent_home, tools, root_folder)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.heartbeats = {}
 
     def init_heartbeat(self, name, cron):
-        self.heartbeats[name] = Heartbeat(self.get_agent(name), cron)
+        self.heartbeats[name] = Heartbeat(
+            cron,
+            self.schedule_agent(name),
+        )
 
     def init_heartbeats(self):
         for agent_name, hb in self.get_heartbeats_from_settings().items():
-            self.init_heartbeat(agent_name, hb["schedule"])
+            self.init_heartbeat(
+                agent_name,
+                hb["schedule"],
+            )
 
     def get_active_heartbeats(self):
         return [hb for hb in self.heartbeats.values() if hb.current]
@@ -460,10 +465,59 @@ class HeartbeatComposer(BaseComposer):
         for agent_name in self.get_heartbeats_from_settings().keys():
             self.start_heartbeat(agent_name)
 
+    def down(self):
+        for heartbeat in self.get_active_heartbeats().values():
+            heartbeat.stop()
 
 class PipelineComposer(BaseComposer):
     """
     Much like composer, but will run agents according to order in pipeline:list param
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.proceses = {}
+        self.pipeline = {}
 
-    pass
+    def init_pipeline(self):
+        for segment in self.get_pipeline_from_settings():
+            asyncio.gather([
+                self.schedule_agent(agent_name) for agent_name in self.get_agent_names()
+            ])
+        return
+
+    def init(self):
+        super().init()
+        self.init_pipeline()
+        return
+
+    def up(self):
+        return
+
+    def down(self):
+        return
+
+def create_composer(**kwargs):
+    agent_home = kwargs.get("agent_home")
+    if not agent_home:
+        raise ValueError("No agent_home set.")
+
+    agent_home = (
+        isinstance(agent_home, Path) and agent_home or Path(agent_home)
+    )
+
+    filepath = agent_home / "sublimate-compose.yml"
+    if os.path.exists(filepath):
+        with open(filepath) as f:
+            data = yaml.safe_load(f)
+        if data.get("heartbeats"):
+            return HeartbeatComposer(**kwargs)
+        elif data.get("pipeline"):
+            return PipelineComposer(**kwargs)
+        else:
+            return KeyError("You need either a `heartbeats` or a `pipeline` in your sublimate-compose.yml if you want to create a composer!")
+    else:
+        raise FileNotFoundError(
+            f"{filepath} not found! You need a sublimate-compose.yml if you want to use compose."
+        )
+
+

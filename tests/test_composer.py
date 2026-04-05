@@ -143,9 +143,9 @@ class TestBaseComposer:
         assert "main" in heartbeats
         assert "schedule" in heartbeats["main"]
 
-    def test_get_pipeline(self):
-        pipeline = self.composer.get_pipeline()
-        assert pipeline == {}
+    def test_get_pipeline_from_settings(self):
+        pipeline = self.composer.get_pipeline_from_settings()
+        assert pipeline == []
 
     def test_get_models(self):
         self.composer.init_chat_models()
@@ -203,7 +203,7 @@ class TestHeartbeat:
         self.mock_agent = MagicMock()
         self.mock_agent.invoke.return_value = "invoke result"
         self.mock_agent.ainvoke.return_value = "ainvoke result"
-        self.heartbeat = composer.Heartbeat(self.mock_agent, "* * * * *")
+        self.heartbeat = composer.Heartbeat("* * * * *", self.mock_agent.ainvoke)
 
     @patch("src.composer.composer.datetime")
     @patch("src.composer.composer.croniter")
@@ -234,17 +234,9 @@ class TestHeartbeat:
         _ = self.heartbeat.wait_until_datetime(target)
         mock_sleep.assert_called_once_with(0)
 
-    def test_get_task_context_as_messages(self):
-        messages = self.heartbeat.get_task_context_as_messages()
-        assert messages == []
-
     def test_beat(self):
         self.heartbeat.beat()
-        self.mock_agent.invoke.assert_called_once_with([])
-
-    def test_abeat(self):
-        self.heartbeat.abeat()
-        self.mock_agent.ainvoke.assert_called_once_with([])
+        self.mock_agent.ainvoke.assert_called_once_with()
 
     def test_start_stop(self):
         # Mock daemon coroutine
@@ -290,8 +282,8 @@ class TestHeartbeatComposer:
         assert "tester" in self.composer.heartbeats
         heartbeat = self.composer.get_heartbeat("main")
         assert heartbeat is not None
-        assert heartbeat.agent.name == "main"
         assert heartbeat.cron == "* 1 * * *"
+        assert heartbeat.callback is not None
 
     def test_get_active_inactive_heartbeats(self):
         self.composer.init_chat_models()
@@ -316,9 +308,7 @@ class TestHeartbeatComposer:
             assert len(inactive) == 2
 
     def test_start_stop_heartbeat(self):
-        self.composer.init_chat_models()
-        self.composer.init_agents()
-        self.composer.init_heartbeats()
+        self.composer.init()
         heartbeat = self.composer.heartbeats["main"]
         with patch.object(heartbeat, "start") as mock_start:
             mock_task = MagicMock()
