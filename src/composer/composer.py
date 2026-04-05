@@ -75,7 +75,7 @@ class BaseAgent:
             root_folder
             and (isinstance(root_folder, Path) and root_folder or Path(root_folder))
             or self.agent_home / ".."
-        )
+        ).resolve()
         self.file_access = file_access if file_access is not None else []
         self.read_only_file_access = (
             read_only_file_access if read_only_file_access is not None else []
@@ -117,6 +117,7 @@ class BaseAgent:
                 relative = path.relative_to(self.root_folder)
             except ValueError:
                 # Path is outside root_folder, deny access
+
                 return False
         else:
             relative = path
@@ -153,6 +154,7 @@ class BaseAgent:
                 return True
 
         # If no patterns match, deny access
+
         return False
 
     def _match_pattern(self, path_str, pattern):
@@ -215,7 +217,10 @@ class BaseAgent:
 
     def load_files(self, files_to_load):
         for field, filepath in files_to_load:
-            self.load_file(field, filepath)
+            try:
+                self.load_file(field, filepath)
+            except FileNotFoundError:
+                setattr(self, field, "")
 
     def load_file_for(
         self, context, filepath
@@ -379,7 +384,7 @@ class BaseComposer:
             root_folder
             and (isinstance(root_folder, Path) and root_folder or Path(root_folder))
             or self.agent_home / ".."
-        )
+        ).resolve()
 
         self.agents = {}
         self.models = {}
@@ -611,10 +616,23 @@ class BaseComposer:
                             return tool(file_path)
 
                     # Copy docstring/description from original tool
-                    if hasattr(tool, "description"):
-                        desc = tool.description
+                    if (
+                        hasattr(tool, "description")
+                        and tool.description
+                        and tool.description.strip()
+                    ):
+                        desc = tool.description.strip()
                     elif hasattr(tool, "__doc__") and tool.__doc__:
-                        desc = tool.__doc__.split("\n")[0]
+                        # Take first non-empty line of docstring
+                        doc_lines = [
+                            line.strip()
+                            for line in tool.__doc__.split("\n")
+                            if line.strip()
+                        ]
+                        if doc_lines:
+                            desc = doc_lines[0]
+                        else:
+                            desc = "Read a file with permission checks"
                     else:
                         desc = "Read a file with permission checks"
                     wrapped_read_file.__doc__ = desc
@@ -643,10 +661,23 @@ class BaseComposer:
                             return tool(file_path, content, append)
 
                     # Copy docstring/description from original tool
-                    if hasattr(tool, "description"):
-                        desc = tool.description
+                    if (
+                        hasattr(tool, "description")
+                        and tool.description
+                        and tool.description.strip()
+                    ):
+                        desc = tool.description.strip()
                     elif hasattr(tool, "__doc__") and tool.__doc__:
-                        desc = tool.__doc__.split("\n")[0]
+                        # Take first non-empty line of docstring
+                        doc_lines = [
+                            line.strip()
+                            for line in tool.__doc__.split("\n")
+                            if line.strip()
+                        ]
+                        if doc_lines:
+                            desc = doc_lines[0]
+                        else:
+                            desc = "Write to a file with permission checks"
                     else:
                         desc = "Write to a file with permission checks"
                     wrapped_write_file.__doc__ = desc

@@ -7,10 +7,8 @@ tools that can be used with the agent system.
 """
 
 from pathlib import Path
-import os
 import subprocess
 import json
-import functools
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime
 
@@ -65,6 +63,10 @@ def _create_tool(
     # Use StructuredTool.from_function to create a tool
     tool_name = name or func.__name__
     tool_description = description or (func.__doc__ or "")
+
+    # Ensure description is not empty
+    if not tool_description:
+        tool_description = "Tool function."
 
     # Clean up description - take first line if multi-line
     if "\n" in tool_description:
