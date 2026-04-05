@@ -5,7 +5,7 @@ from croniter import croniter
 from datetime import datetime
 
 from pathlib import Path
-import os, glob, yaml, asyncio
+import os, glob, yaml, asyncio, json
 
 
 # base task, handles for issues
@@ -167,11 +167,11 @@ class BaseAgent:
     def invoke(
         self, message_history: list, **kwargs
     ):  # maybe wait for dependencies? how? idk...
-        return self.agent.invoke(self.format_message_history(message_history, **kwargs))
+        return self.agent.invoke(self.format_message_history(message_history, **kwargs))  # type: ignore
 
     def ainvoke(self, message_history: list, **kwargs):
         return self.agent.ainvoke(
-            self.format_message_history(message_history, **kwargs)
+            self.format_message_history(message_history, **kwargs)  # type: ignore
         )
 
 
@@ -274,7 +274,7 @@ class BaseComposer:
                 ]
                 if tool
             ],  # probably a better way to do this but your boy's a moron
-            self.root_folder,
+            str(self.root_folder),
         )
 
         self.agents[agent].load_agent()
@@ -287,11 +287,50 @@ class BaseComposer:
         self.init_chat_models()
         self.init_agents()
 
-    def run_agent(self, name: str):
-        # TODO: agent invoke or something, and also write output to agent/states/agent_name.md
-        # should also ideally log this to the db for more logs and potentially better output...
-        # i want version control aswell... unsure on how to achieve this (can use git python i know.)
-        pass
+    def run_agent(self, name: str, message_history: list = None, **kwargs):
+        """
+        Run an agent and save its output to a state file.
+
+        Args:
+            name: Name of the agent to run
+            message_history: Optional list of messages to provide as context
+            **kwargs: Additional arguments passed to agent.invoke
+
+        Returns:
+            Agent output
+        """
+        if message_history is None:
+            message_history = []
+
+        agent = self.get_agent(name)
+        if not agent:
+            raise ValueError(f"Agent '{name}' not found")
+
+        output = agent.invoke(message_history, **kwargs)
+
+        # Save output to agent/states/agent_name.md
+        states_dir = self.agent_home / "states"
+        states_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        state_file = states_dir / f"{name}_{timestamp}.md"
+
+        # Convert output to string if not already
+        if isinstance(output, dict):
+            output_str = json.dumps(output, indent=2, default=str)
+        else:
+            output_str = str(output)
+
+        with open(state_file, "w", encoding="utf-8") as f:
+            f.write(f"# Agent Run: {name}\n")
+            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+            f.write(f"Message history length: {len(message_history)}\n")
+            f.write("\n## Output\n")
+            f.write("```\n")
+            f.write(output_str)
+            f.write("\n```\n")
+
+        return output
 
     # usability functions
     def get_heartbeats_from_settings(self):
