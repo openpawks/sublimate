@@ -83,4 +83,4 @@ repos:
         pass_filenames: false
         always_run: true
         args: []
-        stages: [pre-push, pre-commit]
+        stages: [pre-push, post-commit]

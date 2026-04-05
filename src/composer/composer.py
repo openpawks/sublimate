@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pathlib import Path
 from dotenv import load_dotenv
+from src.composer.tools import _create_tool
 
 import os
 import glob
@@ -27,7 +28,8 @@ class BaseAgent:
     """
     So an agent should interact with the codebase directly.
     It'll write code, and use tools that may run tests or manage other agents
-    Ideally never given access to a terminal directly, but some people will do that anyway
+    Ideally never given access to a terminal directly, but some people will do that
+    anyway
     Or if it's in a docker container I guess its fine, so we'll still add that tool.
 
     This'll want... a few files.
@@ -53,6 +55,9 @@ class BaseAgent:
         model,
         tools=[],
         root_folder="",
+        file_access=None,
+        read_only_file_access=None,
+        deny_file_access=None,
     ):
         self.name = name
         self.prompt = ""
@@ -71,6 +76,11 @@ class BaseAgent:
             and (isinstance(root_folder, Path) and root_folder or Path(root_folder))
             or self.agent_home / ".."
         )
+        self.file_access = file_access if file_access is not None else []
+        self.read_only_file_access = (
+            read_only_file_access if read_only_file_access is not None else []
+        )
+        self.deny_file_access = deny_file_access if deny_file_access is not None else []
         self.agent_file_paths = [
             ("prompt", self.agent_home / f"{self.name}.md"),
             ("heartbeat", self.agent_home / "heartbeats" / f"{self.name}.md"),
@@ -82,6 +92,119 @@ class BaseAgent:
 
     def add_dependency(self, agent):
         return self.dependencies.add(agent)
+
+    def check_file_access(self, file_path, mode="read"):
+        """
+        Check if the agent is allowed to access the given file path.
+
+        Args:
+            file_path: Path to the file (can be absolute or relative to root_folder)
+            mode: "read" or "write"
+
+        Returns:
+            True if allowed, False otherwise.
+        """
+        from pathlib import Path
+
+        # Convert to Path object
+        path = Path(file_path)
+
+        # If path is absolute, make it relative to root_folder
+        if path.is_absolute():
+            try:
+                # Compute relative path from root_folder to absolute path
+                # If path is not under root_folder, deny access
+                relative = path.relative_to(self.root_folder)
+            except ValueError:
+                # Path is outside root_folder, deny access
+                return False
+        else:
+            relative = path
+
+        # Normalize to string with forward slashes, remove leading ./
+        rel_str = str(relative).replace("\\", "/")
+        if rel_str.startswith("./"):
+            rel_str = rel_str[2:]
+
+        # Check deny patterns first
+        for pattern in self.deny_file_access:
+            # Normalize pattern
+            pat = pattern.replace("\\", "/")
+            if pat.startswith("./"):
+                pat = pat[2:]
+            if self._match_pattern(rel_str, pat):
+                return False
+
+        # Check read-only patterns
+        for pattern in self.read_only_file_access:
+            pat = pattern.replace("\\", "/")
+            if pat.startswith("./"):
+                pat = pat[2:]
+            if self._match_pattern(rel_str, pat):
+                # If matched, allow read only; deny write
+                return mode == "read"
+
+        # Check general file_access patterns
+        for pattern in self.file_access:
+            pat = pattern.replace("\\", "/")
+            if pat.startswith("./"):
+                pat = pat[2:]
+            if self._match_pattern(rel_str, pat):
+                return True
+
+        # If no patterns match, deny access
+        return False
+
+    def _match_pattern(self, path_str, pattern):
+        """
+        Match a path string against a glob pattern respecting directory boundaries.
+        Supports * (any characters except /), ? (single character except /), and **
+        (zero or more directories).
+        """
+        import fnmatch
+
+        # Normalize slashes
+        path_str = path_str.replace("\\", "/")
+        pattern = pattern.replace("\\", "/")
+
+        # Split into components
+        path_parts = path_str.split("/")
+        pattern_parts = pattern.split("/")
+
+        # Handle leading ./ or . component
+        if pattern_parts and pattern_parts[0] == ".":
+            pattern_parts = pattern_parts[1:]
+        if path_parts and path_parts[0] == ".":
+            path_parts = path_parts[1:]
+
+        # Greedy matching with **
+        i = j = 0
+        while i < len(pattern_parts) and j < len(path_parts):
+            if pattern_parts[i] == "**":
+                # ** can match zero or more remaining directories
+                # Try match remaining pattern parts against remaining path parts
+                # Skip **
+                i += 1
+                if i == len(pattern_parts):
+                    # ** at end matches everything
+                    return True
+                # Try match remaining pattern against each possible suffix of path
+                for k in range(j, len(path_parts) + 1):
+                    if self._match_pattern(
+                        "/".join(path_parts[k:]), "/".join(pattern_parts[i:])
+                    ):
+                        return True
+                return False
+            if not fnmatch.fnmatch(path_parts[j], pattern_parts[i]):
+                return False
+            i += 1
+            j += 1
+
+        # If we have remaining pattern parts that are not **, or remaining path parts,
+        # no match
+        while i < len(pattern_parts) and pattern_parts[i] == "**":
+            i += 1
+        return i == len(pattern_parts) and j == len(path_parts)
 
     def load_file(self, field, filepath):  # intent to set heartbeat, prompt & context
         if os.path.exists(filepath):
@@ -311,11 +434,235 @@ class BaseComposer:
         for model in self.data.get("models").keys():
             self.init_chat_model(model, self.data.get("models").get(model))
 
+    def _wrap_tool_for_agent(self, tool, agent_obj):
+        """
+        Wrap a tool with permission checks for the given agent.
+        Returns a new tool object that checks file access before delegating.
+        """
+        # If tool is a LangChain tool, we need to wrap its run method.
+        # For simplicity, we only wrap file-related tools by name.
+        # Determine if tool is file-related by checking its name.
+        tool_name = None
+        if hasattr(tool, "name"):
+            tool_name = tool.name
+        elif callable(tool) and hasattr(tool, "__name__"):
+            tool_name = tool.__name__
+
+        if tool_name in ("read_file", "write_file"):
+            # Create a wrapper function that calls agent_obj.check_file_access
+            if tool_name == "read_file":
+
+                def wrapped_read_file(file_path: str) -> str:
+                    if not agent_obj.check_file_access(file_path, mode="read"):
+                        return f"Access denied to read file: {file_path}"
+                    # Call original tool
+                    if hasattr(tool, "run"):
+                        return tool.run(file_path)
+                    else:
+                        return tool(file_path)
+
+                # Create new tool with same signature
+                if _create_tool is not None:
+                    return _create_tool(
+                        wrapped_read_file,
+                        name="read_file",
+                        description="Read a file with permission checks",
+                    )
+                else:
+                    return wrapped_read_file
+            elif tool_name == "write_file":
+
+                def wrapped_write_file(
+                    file_path: str, content: str, append: bool = False
+                ) -> str:
+                    if not agent_obj.check_file_access(file_path, mode="write"):
+                        return f"Access denied to write file: {file_path}"
+                    if hasattr(tool, "run"):
+                        return tool.run(file_path, content, append)
+                    else:
+                        return tool(file_path, content, append)
+
+                if _create_tool is not None:
+                    return _create_tool(
+                        wrapped_write_file,
+                        name="write_file",
+                        description="Write to a file with permission checks",
+                    )
+                else:
+                    return wrapped_write_file
+        # For other tools, return as-is
+        return tool
+
     def init_agent(self, agent, agent_data, Agent=BaseAgent):
         # TODO: add support for param to set different:
         # heartbeat path (currently read from agent_home/heartbeats/name.md)
         # agent path (currently read from agent_home/name.md)
         # state? path (currently only read from agent_home/states/dependency_name.md) [Low importance]
+
+        # Extract file access patterns
+        file_access = agent_data.get("file_access", [])
+        read_only_file_access = agent_data.get(
+            "read_only_file_access", agent_data.get("read_file_access", [])
+        )
+        deny_file_access = agent_data.get("deny_file_access", [])
+
+        # Create permission checker closure
+        root_folder = self.root_folder
+
+        def check_file_access(file_path, mode="read"):
+            """Check file access using the agent's patterns."""
+            from pathlib import Path
+
+            path = Path(file_path)
+            if path.is_absolute():
+                try:
+                    relative = path.relative_to(root_folder)
+                except ValueError:
+                    return False
+            else:
+                relative = path
+
+            rel_str = str(relative).replace("\\", "/")
+            if rel_str.startswith("./"):
+                rel_str = rel_str[2:]
+
+            # Helper to match pattern with directory awareness
+            def match(patt, path_str):
+                import fnmatch
+
+                # Normalize slashes
+                path_str = path_str.replace("\\", "/")
+                patt = patt.replace("\\", "/")
+
+                # Split into components
+                path_parts = path_str.split("/")
+                pattern_parts = patt.split("/")
+
+                # Handle leading . component
+                if pattern_parts and pattern_parts[0] == ".":
+                    pattern_parts = pattern_parts[1:]
+                if path_parts and path_parts[0] == ".":
+                    path_parts = path_parts[1:]
+
+                # Greedy matching with **
+                i = j = 0
+                while i < len(pattern_parts) and j < len(path_parts):
+                    if pattern_parts[i] == "**":
+                        i += 1
+                        if i == len(pattern_parts):
+                            return True
+                        for k in range(j, len(path_parts) + 1):
+                            if match(
+                                "/".join(pattern_parts[i:]), "/".join(path_parts[k:])
+                            ):
+                                return True
+                        return False
+                    if not fnmatch.fnmatch(path_parts[j], pattern_parts[i]):
+                        return False
+                    i += 1
+                    j += 1
+
+                while i < len(pattern_parts) and pattern_parts[i] == "**":
+                    i += 1
+                return i == len(pattern_parts) and j == len(path_parts)
+
+            # Deny first
+            for pattern in deny_file_access:
+                pat = pattern.replace("\\", "/")
+                if pat.startswith("./"):
+                    pat = pat[2:]
+                if match(pat, rel_str):
+                    return False
+
+            # Read-only
+            for pattern in read_only_file_access:
+                pat = pattern.replace("\\", "/")
+                if pat.startswith("./"):
+                    pat = pat[2:]
+                if match(pat, rel_str):
+                    return mode == "read"
+
+            # General file access
+            for pattern in file_access:
+                pat = pattern.replace("\\", "/")
+                if pat.startswith("./"):
+                    pat = pat[2:]
+                if match(pat, rel_str):
+                    return True
+
+            return False
+
+        # Wrap tools that need permission checks
+        wrapped_tools = []
+        for tool_name in agent_data.get("tools", []):
+            tool = self.tools.get(tool_name)
+            if not tool:
+                continue
+            # Wrap file-related tools
+            if tool_name in ("read_file", "write_file"):
+                if tool_name == "read_file":
+
+                    def wrapped_read_file(file_path: str) -> str:
+                        if not check_file_access(file_path, mode="read"):
+                            return f"Access denied to read file: {file_path}"
+                        if hasattr(tool, "run"):
+                            return tool.run(file_path)
+                        else:
+                            return tool(file_path)
+
+                    # Copy docstring/description from original tool
+                    if hasattr(tool, "description"):
+                        desc = tool.description
+                    elif hasattr(tool, "__doc__") and tool.__doc__:
+                        desc = tool.__doc__.split("\n")[0]
+                    else:
+                        desc = "Read a file with permission checks"
+                    wrapped_read_file.__doc__ = desc
+
+                    # Create new tool object
+                    if _create_tool is not None:
+                        wrapped_tools.append(
+                            _create_tool(
+                                wrapped_read_file,
+                                name="read_file",
+                                description=desc,
+                            )
+                        )
+                    else:
+                        wrapped_tools.append(wrapped_read_file)
+                elif tool_name == "write_file":
+
+                    def wrapped_write_file(
+                        file_path: str, content: str, append: bool = False
+                    ) -> str:
+                        if not check_file_access(file_path, mode="write"):
+                            return f"Access denied to write file: {file_path}"
+                        if hasattr(tool, "run"):
+                            return tool.run(file_path, content, append)
+                        else:
+                            return tool(file_path, content, append)
+
+                    # Copy docstring/description from original tool
+                    if hasattr(tool, "description"):
+                        desc = tool.description
+                    elif hasattr(tool, "__doc__") and tool.__doc__:
+                        desc = tool.__doc__.split("\n")[0]
+                    else:
+                        desc = "Write to a file with permission checks"
+                    wrapped_write_file.__doc__ = desc
+
+                    if _create_tool is not None:
+                        wrapped_tools.append(
+                            _create_tool(
+                                wrapped_write_file,
+                                name="write_file",
+                                description=desc,
+                            )
+                        )
+                    else:
+                        wrapped_tools.append(wrapped_write_file)
+            else:
+                wrapped_tools.append(tool)
 
         self.agents[agent] = Agent(
             agent,
@@ -323,14 +670,11 @@ class BaseComposer:
             self.models[
                 agent_data.get("model", agent_data.get("model_name", "default"))
             ],
-            [
-                tool
-                for tool in [
-                    self.tools.get(x, None) for x in agent_data.get("tools", [])
-                ]
-                if tool
-            ],  # probably a better way to do this but your boy's a moron
+            wrapped_tools,
             str(self.root_folder),
+            file_access=file_access,
+            read_only_file_access=read_only_file_access,
+            deny_file_access=deny_file_access,
         )
 
         self.agents[agent].load_agent()
