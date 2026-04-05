@@ -5,9 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "croniter>=6.2.2",
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.135.3",
-    "langchain[deepseek,models,ollama]>=1.2.15",
+    "langchain[ollama]>=1.2.15",
     "pytest>=9.0.2",
     "pyyaml>=6.0.3",
     "ruff>=0.15.9",

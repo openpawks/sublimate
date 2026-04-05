@@ -1,8 +1,11 @@
 from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
 
+from croniter import croniter
+from datetime import datetime
+
 from pathlib import Path
-import os, glob, yaml
+import os, glob, yaml, asyncio
 
 # base task, handles for issues
 class BaseTask():
@@ -104,7 +107,7 @@ class BaseAgent():
         self.load_files_for(self.context, (
             self.root_folder / "AGENTS.md",
             self.root_folder / "README.md",
-            *glob.glob(str(self.root_folder / ".." / "docs" / "*"), recursive=True)
+            *glob.glob(str(self.root_folder / ".." / "docs" / "*"), recursive=True),
         )) 
 
     def format_message_history(
@@ -186,6 +189,7 @@ class BaseComposer():
             agent_home or 
             Path(agent_home)
         )
+
         self.root_folder = (
             root_folder and (
                 isinstance(root_folder, Path) and 
@@ -223,7 +227,10 @@ class BaseComposer():
         # might have to get this from db not sure...
         # can run tests with mock i guess.
         pass
-    
+   
+    def get_agent(self, name):
+        return self.agents.get(name, None)
+
     def init_chat_model(self, model, model_data):
         self.models[model] = init_chat_model(
             **model_data,
@@ -272,12 +279,44 @@ class BaseComposer():
                 self.data.get("agents").get(agent),
                 Agent
             )
+    
+    def init(self): # init_all?
+        self.init_chat_models()
+        self.init_agents()
 
     def run_agent(self, name:str):
         # TODO: agent invoke or something, and also write output to agent/states/agent_name.md
         # should also ideally log this to the db for more logs and potentially better output...
         # i want version control aswell... unsure on how to achieve this (can use git python i know.)
         pass
+    
+    # usability functions
+    def get_heartbeats_from_settings(self):
+        return self.data.get("heartbeats", {})
+
+    def get_heartbeat_from_settings(self, name):
+        if self.get_heartbeats_from_settings():
+            return self.get_heartbeats_from_settings().get(name, {})
+        else:
+            return {}
+
+    def get_pipeline(self):
+        return self.data.get("pipeline", {})
+
+    def get_agents(self):
+        return self.agents
+
+    def get_agent(self, name):
+        return self.agents.get(name, {})
+
+    def get_models(self):
+        return self.models
+
+    def get_model(self, name):
+        return self.models.get(name, {})
+
+    def get_agent_names(self):
+        return list(self.data.get("agents").keys())
 
     def up(self):
         # TODO: oh god
@@ -287,17 +326,105 @@ class BaseComposer():
         # TODO: ohh goddddd
         pass
 
+class Heartbeat():
+    def __init__(self, agent, cron):
+        self.agent = agent
+        self.cron = cron
+        self.current = None
+
+    def get_next(self):
+        return croniter(self.cron, datetime.now()) 
+
+    def wait_until_datetime(self, target_datetime):
+        now = datetime.now()
+        delta = (target_datetime - now).total_seconds()
+        if delta > 0:
+            return asyncio.sleep(delta)
+        return asyncio.sleep(0)
+
+    async def daemon():
+        while True:
+            await self.wait_until_datetime(self.get_next())
+            await self.abeat()
+
+    def get_task_context_as_messages():
+        # TODO: have to write this. Anyone can write this. 
+        return []
+
+    def beat():
+        # TODO: invoke with task or active task etc.
+        # we should probably also save task data incase program stops suddenly
+        return self.agent.invoke(
+            self.get_task_context_as_messages()
+        )
+
+    def abeat():
+        # invoke agent, asynchronously i guess
+        return self.agent.ainvoke(
+            self.get_task_context_as_messages()
+        )
+
+    def start():
+        if self.current:
+            raise RuntimeError("Heartbeat already running")
+        self.current = asyncio.create_task(daemon())
+        return self.current
+
+    def stop():
+        if self.current:
+            # stop asyncio create_task object.
+            return self.current.cancel()
+        return None # no heartbeat to kill
+
 class HeartbeatComposer(BaseComposer):
     """
     Much like composer, but will run the agents on a cronjob according to the config.
     """
-    pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.heartbeats = {}
+
+    def init_heartbeat(self, name, cron):
+        self.heartbeats[name] = Heartbeat(
+            self.get_agent(name),
+            cron
+        )
+
+    def init_heartbeats(self):
+        for agent_name, hb in self.get_heartbeats().items():
+            self.init_heartbeat(
+                self.get_agent(agent_name), 
+                hb["schedule"]
+            )
+
+    def get_active_heartbeats(self):
+        return [hb for hb in self.heartbeats.values() if hb.current]
+
+    def get_inactive_heartbeats(self):
+        return [hb for hb in self.heartbeats.values() if not hb.current]
+
+    def get_heartbeat(self, name):
+        return self.heartbeats.get(name, {})
+
+    async def start_heartbeat(self, name):
+        return self.get_heartbeat(name).start()
+
+    async def stop_heartbeat(self, name):
+        return self.get_heartbeat(name).stop()
+
+    def init(): # init_all
+        super().init()
+        self.init_heartbeats()
+
+    def up(self):
+        if not self.heartbeats:
+            self.init()
+        for agent_name in self.get_heartbeats_from_settings().keys():
+            self.start_heartbeat(agent_name)
 
 class PipelineComposer(BaseComposer):
     """
     Much like composer, but will run agents according to order in pipeline:list param
     """
     pass
-
-
 

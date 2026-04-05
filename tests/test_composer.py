@@ -67,6 +67,7 @@ class TestBaseComposer():
     def test_init_agents(self):
         self.composer.init_chat_models()
         self.composer.init_agents() 
+        assert self.composer.get_agent("main").name == "main"
 
 
 class TestHeartbeatComposer():
