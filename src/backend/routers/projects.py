@@ -1,17 +1,16 @@
 from typing import Annotated
 
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends
 
-from sqlalchemy import select, count
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import models
 from schemas import (
-    ProjectBase,
-    ProjectResponse, 
-    ProjectUpdate, 
-    ProjectCreate
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectResponse,
 )
 from database import get_db
 
@@ -30,8 +29,6 @@ async def create_project(
     # TODO: authentication
     
     new_project = models.Project(
-        result = await db.execute(select(count()).select_from(models.Project)).scalars().first() + 1 # fix
-        project_count = result.scalar()
         root_dir=project.root_dir,
         agent_root_dir=project.agent_root_dir,
     )
@@ -107,7 +104,8 @@ async def update_project_full(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_project(
-    project_id: int
+    project_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     # TODO: authentication
     
