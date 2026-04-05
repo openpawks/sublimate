@@ -7,9 +7,14 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-import os, glob, yaml, asyncio, json
+import os
+import glob
+import yaml
+import asyncio
+import json
 
 load_dotenv()
+
 
 # base task, handles for issues
 class BaseTask:
@@ -112,7 +117,9 @@ class BaseAgent:
             (
                 self.root_folder / "AGENTS.md",
                 self.root_folder / "README.md",
-                *glob.glob(str(self.root_folder / ".." / "docs" / "*"), recursive=True),
+                *glob.glob(
+                    str(self.root_folder / ".." / "docs" / "*.*"), recursive=True
+                ),
             ),
         )
 
@@ -128,7 +135,6 @@ class BaseAgent:
         include_context_files=True,
         include_dependencies=True,
     ):
-
         prompt_prefixes = [
             include_prompt and self.prompt,
             include_heartbeat and self.heartbeat,
@@ -150,7 +156,9 @@ class BaseAgent:
                             for sublist in [
                                 glob.glob(
                                     str(
-                                        self.agent_home / "states" / f"{dependency.name}_*.md" # TODO:: order by earliest to latest.
+                                        self.agent_home
+                                        / "states"
+                                        / f"{dependency.name}_*.md"  # TODO:: order by earliest to latest.
                                     )
                                 )
                                 for dependency in self.dependencies
@@ -179,7 +187,7 @@ class BaseAgent:
             self.format_message_history(message_history, **kwargs)  # type: ignore
         )
 
-    async def run(**kwargs):
+    async def run(self, **kwargs):
         """
         Run an agent and save its output to a state file.
 
@@ -203,7 +211,7 @@ class BaseAgent:
         states_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        state_file = states_dir / f"{name}_{timestamp}.md"
+        state_file = states_dir / f"{self.name}_{timestamp}.md"
 
         # Convert output to string if not already
         if isinstance(output, dict):
@@ -221,6 +229,7 @@ class BaseAgent:
             f.write("\n```\n")
 
         return output
+
 
 # this should parse a sublimate-compose.yml
 class BaseComposer:
@@ -334,10 +343,12 @@ class BaseComposer:
         self.init_chat_models()
         self.init_agents()
 
-    def schedule_agent(self, name: str): 
+    def schedule_agent(self, name: str):
         agent = self.get_agent(name)
         if not agent:
-            raise KeyError(f"'{name}' agent not defined in config, or this hasn't been initialised")
+            raise KeyError(
+                f"'{name}' agent not defined in config, or this hasn't been initialised"
+            )
         return agent.run
 
     # usability functions
@@ -349,7 +360,7 @@ class BaseComposer:
             return self.get_heartbeats_from_settings().get(name, {})
         else:
             return {}
-    
+
     def get_pipeline_from_settings(self):
         return self.data.get("pipeline", [])
 
@@ -372,6 +383,7 @@ class BaseComposer:
     def down(self):
         # TODO: ohh goddddd
         pass
+
 
 class Heartbeat:
     def __init__(self, cron, callback):
@@ -397,7 +409,7 @@ class Heartbeat:
     def beat(self):
         # TODO: invoke with task or active task etc.
         # we should probably also save task data incase program stops suddenly
-        return self.callback() 
+        return self.callback()
 
     def start(self):
         if self.current:
@@ -469,10 +481,12 @@ class HeartbeatComposer(BaseComposer):
         for heartbeat in self.get_active_heartbeats().values():
             heartbeat.stop()
 
+
 class PipelineComposer(BaseComposer):
     """
     Much like composer, but will run agents according to order in pipeline:list param
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.proceses = {}
@@ -480,9 +494,12 @@ class PipelineComposer(BaseComposer):
 
     def init_pipeline(self):
         for segment in self.get_pipeline_from_settings():
-            asyncio.gather([
-                self.schedule_agent(agent_name) for agent_name in self.get_agent_names()
-            ])
+            asyncio.gather(
+                [
+                    self.schedule_agent(agent_name)
+                    for agent_name in self.get_agent_names()
+                ]
+            )
         return
 
     def init(self):
@@ -496,14 +513,13 @@ class PipelineComposer(BaseComposer):
     def down(self):
         return
 
+
 def create_composer(**kwargs):
     agent_home = kwargs.get("agent_home")
     if not agent_home:
         raise ValueError("No agent_home set.")
 
-    agent_home = (
-        isinstance(agent_home, Path) and agent_home or Path(agent_home)
-    )
+    agent_home = isinstance(agent_home, Path) and agent_home or Path(agent_home)
 
     filepath = agent_home / "sublimate-compose.yml"
     if os.path.exists(filepath):
@@ -514,10 +530,10 @@ def create_composer(**kwargs):
         elif data.get("pipeline"):
             return PipelineComposer(**kwargs)
         else:
-            return KeyError("You need either a `heartbeats` or a `pipeline` in your sublimate-compose.yml if you want to create a composer!")
+            return KeyError(
+                "You need either a `heartbeats` or a `pipeline` in your sublimate-compose.yml if you want to create a composer!"
+            )
     else:
         raise FileNotFoundError(
             f"{filepath} not found! You need a sublimate-compose.yml if you want to use compose."
         )
-
-

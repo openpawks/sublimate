@@ -16,3 +16,4 @@ mock.db
 
 .env
 tmp/*
+htmlcov/*

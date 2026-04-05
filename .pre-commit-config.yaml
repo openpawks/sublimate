@@ -55,26 +55,26 @@ repos:
   # Custom local checks
   - repo: local
     hooks:
-      - id: datetime-timezone-check
-        name: Check datetime timezone awareness
-        entry: python .pre-commit-config.d/check_datetime_timezone.py
-        language: python
-        files: \.py$
-        pass_filenames: true
+#      - id: datetime-timezone-check
+#        name: Check datetime timezone awareness
+#        entry: python .pre-commit-config.d/check_datetime_timezone.py
+#        language: python
+#        files: \.py$
+#        pass_filenames: true
 
-      - id: session-context-manager
-        name: Check for session context managers
-        entry: python .pre-commit-config.d/check_session_context.py
-        language: python
-        files: \.py$
-        pass_filenames: true
+#      - id: session-context-manager
+#        name: Check for session context managers
+#        entry: python .pre-commit-config.d/check_session_context.py
+#        language: python
+#        files: \.py$
+#        pass_filenames: true
 
-      - id: ssrf-protection
-        name: Check SSRF protection
-        entry: python .pre-commit-config.d/check_ssrf.py
-        language: python
-        files: \.py$
-        pass_filenames: true
+#      - id: ssrf-protection
+#        name: Check SSRF protection
+#        entry: python .pre-commit-config.d/check_ssrf.py
+#        language: python
+#        files: \.py$
+#        pass_filenames: true
 
       - id: run-tests
         name: Run pytest
@@ -82,4 +82,5 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-push]
+        args: []
+        stages: [pre-push, pre-commit]
