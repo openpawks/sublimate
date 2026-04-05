@@ -41,7 +41,7 @@ If you want to contribute, please read the **CONTRIBUTING.md**
 
 Comprehensive documentation is available for key components:
 
-- [Composer System](docs/composer.md): Detailed guide to agent orchestration, configuration, and usage
+- [Composer System](docs/composer/README.md): Detailed guide to agent orchestration, configuration, and usage
 - [Agent Templates](agent_templates/default/): Example configurations and prompts
 - [Testing](tests/): Test suite with mocking strategies
 
