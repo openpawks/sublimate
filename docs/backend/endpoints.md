@@ -47,4 +47,22 @@ POST   /users/me/change-password - Change password
 | POST | /projects/from-template | Create project from template | NO |
 | PUT | /projects/{project_id}/from-template | Update project agent template with preset | NO |
 
+## Provider management (per user)
+Ideally, API keys should be (password) encrypted. This may be a difficult task
+| METHODS | ROUTE | PURPOSE | COMPLETED? |
+|-|-|-|-|
+| GET, POST | /providers | List configured AI providers, add new provider (by name) | NO |
+| GET, PUT, DELETE | /providers/{provider_name} | Get provider details, update with new settings | NO |
+| GET | /providers/{provider_name}/test | Test provider works | NO |
+| GET | /providers/available | List available providers, we will have some presets | NO |
+
+
+
 # THIS IS UNFINISHED, MANY POTENTIAL FEATURES ARE CURRENTLY NOT MARKED
+Unmarked as of yet
+- More monitoring metrics
+- File and configuration management /projects/{project_id}/files/{path}
+- Agent communication (low priority)
+- Websocket endpoints for realtime updates (low priority)
+- Admin endpoints (low priority)
+- Version control endpoints
