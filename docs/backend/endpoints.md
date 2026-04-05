@@ -46,3 +46,5 @@ POST   /users/me/change-password - Change password
 | GET | /project-templates | Get project templates | NO |
 | POST | /projects/from-template | Create project from template | NO |
 | PUT | /projects/{project_id}/from-template | Update project agent template with preset | NO |
+
+# THIS IS UNFINISHED, MANY POTENTIAL FEATURES ARE CURRENTLY NOT MARKED
