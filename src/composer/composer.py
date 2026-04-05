@@ -287,7 +287,7 @@ class BaseComposer:
         self.init_chat_models()
         self.init_agents()
 
-    def run_agent(self, name: str, message_history: list = None, **kwargs):
+    def run_agent(self, name: str, message_history: list | None = None, **kwargs):
         """
         Run an agent and save its output to a state file.
 
