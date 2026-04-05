@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from src.composer.composer import BaseAgent
+from src.orchestration.composer import BaseAgent
 from pathlib import Path
 import tempfile
 
@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print("check write:", agent.check_file_access(str(file), "write"))
 
     # test pattern matching
-    from src.composer.composer import BaseComposer
+    from src.orchestration.composer import BaseComposer
 
     composer = BaseComposer(str(agent_home), {})
     # manually call init_agent? skip

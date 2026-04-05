@@ -14,7 +14,7 @@ graph TB
         B --> D[Agents Config]
         B --> E[Heartbeats/Pipeline Config]
     end
-    
+
     subgraph "BaseComposer Core"
         F[BaseComposer] --> G[init_chat_models]
         F --> H[init_agents]
@@ -22,19 +22,19 @@ graph TB
         G --> J[Model Registry]
         H --> K[Agent Registry]
     end
-    
+
     subgraph "Execution Strategies"
         F --> L[HeartbeatComposer]
         F --> M[PipelineComposer]
         L --> N[Scheduled Execution]
         M --> O[Sequential Execution]
     end
-    
+
     C -.-> G
     D -.-> H
     E -.-> L
     E -.-> M
-    
+
     style F fill:#f9f,stroke:#333,stroke-width:3px
 ```
 
@@ -80,10 +80,10 @@ class BaseComposer:
 ```yaml
 models:
   # Model definitions
-  
+
 agents:
   # Agent definitions
-  
+
 heartbeats:  # OR pipeline:
   # Execution schedule
 ```
@@ -95,7 +95,7 @@ models:
     model_provider: ollama
     model: qwen3.5:0.8b
     temperature: 0.4
-    
+
   fast-model:
     model_provider: ollama
     model: phi3:mini
@@ -104,7 +104,7 @@ agents:
   coder:
     model: default-model
     tools: [write_file, read_file, run_tests]
-    
+
   reviewer:
     model: fast-model
     tools: [read_file, create_issue]
@@ -112,7 +112,7 @@ agents:
 heartbeats:
   coder:
     schedule: "*/30 * * * *"
-    
+
   reviewer:
     schedule: "0 * * * *"
     dependencies: [coder]
@@ -132,7 +132,7 @@ sequenceDiagram
     participant F as File System
     participant Y as YAML Parser
     participant V as Validator
-    
+
     U->>C: BaseComposer(agent_home, tools)
     C->>F: Check sublimate-compose.yml exists
     alt File exists
@@ -228,7 +228,7 @@ if not os.path.exists(filepath):
 ### Basic Composer Setup
 
 ```python
-from src.composer.composer import BaseComposer
+from src.orchestration.composer import BaseComposer
 
 # Define tools
 def write_file(path, content):
@@ -288,7 +288,7 @@ try:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             f.write("agents: {}")  # Missing models section
-        
+
         composer = BaseComposer(tmpdir, {})
 except KeyError as e:
     print(f"Expected error: {e}")
@@ -299,13 +299,13 @@ except KeyError as e:
 ### Custom Agent Class Integration
 
 ```python
-from src.composer.composer import BaseComposer, BaseAgent
+from src.orchestration.composer import BaseComposer, BaseAgent
 
 class SpecializedAgent(BaseAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
-    
+
     def load_agent(self):
         super().load_agent()
         # Add specialty to prompt
@@ -374,7 +374,7 @@ def init_agent(self, agent, agent_data, Agent=BaseAgent):
         ],
         str(self.root_folder),
     )
-    
+
     self.agents[agent].load_agent()
 ```
 
@@ -433,7 +433,7 @@ def safe_agent_invocation(composer, agent_name, message):
     agent = composer.get_agent(agent_name)
     if not agent:
         raise ValueError(f"Agent {agent_name} not found")
-    
+
     try:
         return agent.invoke([{"role": "user", "content": message}])
     except Exception as e:
@@ -450,7 +450,7 @@ class LazyBaseComposer(BaseComposer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._initialized = False
-    
+
     def get_agent(self, name):
         if not self._initialized:
             self.init()
@@ -465,7 +465,7 @@ class CachedBaseComposer(BaseComposer):
         super().__init__(*args, **kwargs)
         self._model_cache = {}
         self._agent_cache = {}
-    
+
     def init_chat_model(self, model, model_data):
         cache_key = f"{model}:{hash(str(model_data))}"
         if cache_key not in self._model_cache:
@@ -486,7 +486,7 @@ class SecureBaseComposer(BaseComposer):
     def __init__(self, *args, allowed_directories=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.allowed_directories = allowed_directories or []
-    
+
     def init_agent(self, agent, agent_data, Agent=BaseAgent):
         # Validate agent has access to allowed directories only
         if self.allowed_directories:
@@ -519,19 +519,19 @@ def test_composer_initialization():
                 "test": {"schedule": "* * * * *"}
             }
         }
-        
+
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config, f)
-        
+
         # Mock model initialization
         with patch("langchain.chat_models.init_chat_model") as mock_init:
             mock_model = MagicMock()
             mock_init.return_value = mock_model
-            
+
             composer = BaseComposer(tmpdir, {})
             composer.init()
-            
+
             assert "test" in composer.agents
             assert composer.get_agent("test") is not None
 ```
@@ -546,17 +546,17 @@ def test_composer_with_real_tools():
         tools = {
             'test_tool': lambda x: f"Tool output: {x}"
         }
-        
+
         # Create configuration file
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config, f)
-        
+
         # Initialize composer
         with patch("langchain.chat_models.init_chat_model"):
             composer = BaseComposer(tmpdir, tools)
             composer.init()
-            
+
             # Test tool distribution
             agent = composer.get_agent("test_agent")
             assert len(agent.tools) == 1
@@ -570,15 +570,15 @@ class PluginBaseComposer(BaseComposer):
     def __init__(self, *args, plugins=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.plugins = plugins or []
-    
+
     def init(self):
         # Run pre-init plugins
         for plugin in self.plugins:
             plugin.pre_init(self)
-        
+
         # Initialize normally
         super().init()
-        
+
         # Run post-init plugins
         for plugin in self.plugins:
             plugin.post_init(self)
@@ -590,17 +590,17 @@ class TemplatedBaseComposer(BaseComposer):
     def __init__(self, *args, template_vars=None, **kwargs):
         self.template_vars = template_vars or {}
         super().__init__(*args, **kwargs)
-    
+
     def _load_configuration(self):
         """Load and template configuration"""
         filepath = self.agent_home / "sublimate-compose.yml"
         with open(filepath) as f:
             template = f.read()
-        
+
         # Apply template variables
         for key, value in self.template_vars.items():
             template = template.replace(f"{{{{ {key} }}}}", str(value))
-        
+
         self.data = yaml.safe_load(template)
 ```
 

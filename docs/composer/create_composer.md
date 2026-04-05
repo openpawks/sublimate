@@ -11,7 +11,7 @@ def create_composer(**kwargs):
     agent_home = kwargs.get("agent_home")
     if not agent_home:
         raise ValueError("No agent_home set.")
-    
+
     # Configuration analysis and composer creation logic
 ```
 
@@ -24,7 +24,7 @@ graph TB
         A --> C[tools]
         A --> D[root_folder]
     end
-    
+
     subgraph "Factory Logic"
         E[create_composer] --> F[Validate agent_home]
         F --> G[Load configuration]
@@ -34,11 +34,11 @@ graph TB
         I -->|pipeline| K[PipelineComposer]
         I -->|neither| L[Raise KeyError]
     end
-    
+
     subgraph "Output"
         M[Composer Instance] --> N[Ready for init/up]
     end
-    
+
     B -.-> F
     style E fill:#f9f,stroke:#333,stroke-width:3px
 ```
@@ -81,7 +81,7 @@ else:
 ### Basic Usage
 
 ```python
-from src.composer.composer import create_composer
+from src.orchestration.composer import create_composer
 
 # Define tools
 tools = {
@@ -153,7 +153,7 @@ composer = create_composer(agent_home="./agents", tools={})
 ### Error Handling
 
 ```python
-from src.composer.composer import create_composer
+from src.orchestration.composer import create_composer
 import tempfile
 import os
 
@@ -176,7 +176,7 @@ try:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             f.write("agents: {}")  # Missing both heartbeats and pipeline
-        
+
         composer = create_composer(agent_home=tmpdir)
 except KeyError as e:
     print(f"Expected error: {e}")  # "You need either a `heartbeats` or a `pipeline`..."
@@ -284,32 +284,32 @@ except yaml.YAMLError as e:
 ```python
 def create_custom_composer(**kwargs):
     """Extended factory with additional validation and customization"""
-    
+
     # Validate agent_home
     agent_home = kwargs.get("agent_home")
     if not agent_home:
         raise ValueError("No agent_home set.")
-    
+
     # Convert to Path
     agent_home = Path(agent_home)
-    
+
     # Check if directory exists
     if not agent_home.exists():
         raise FileNotFoundError(f"Directory {agent_home} does not exist")
-    
+
     # Check configuration file
     config_path = agent_home / "sublimate-compose.yml"
     if not config_path.exists():
         # Create default configuration
         create_default_configuration(agent_home)
-    
+
     # Load configuration
     with open(config_path) as f:
         data = yaml.safe_load(f)
-    
+
     # Additional validation
     validate_configuration(data)
-    
+
     # Determine composer type with fallback
     if data.get("heartbeats"):
         composer_class = HeartbeatComposer
@@ -320,7 +320,7 @@ def create_custom_composer(**kwargs):
         print("Warning: No heartbeats or pipeline found, using HeartbeatComposer with default schedule")
         data["heartbeats"] = create_default_heartbeats(data.get("agents", {}))
         composer_class = HeartbeatComposer
-    
+
     # Create composer
     return composer_class(**kwargs)
 ```
@@ -330,29 +330,29 @@ def create_custom_composer(**kwargs):
 ```python
 def create_environment_composer(environment="development", **kwargs):
     """Create composer with environment-specific configuration"""
-    
+
     agent_home = kwargs.get("agent_home")
     if not agent_home:
         raise ValueError("No agent_home set.")
-    
+
     agent_home = Path(agent_home)
-    
+
     # Look for environment-specific configuration
     env_config_path = agent_home / f"sublimate-compose.{environment}.yml"
     default_config_path = agent_home / "sublimate-compose.yml"
-    
+
     config_path = env_config_path if env_config_path.exists() else default_config_path
-    
+
     if not config_path.exists():
         raise FileNotFoundError(f"No configuration found at {config_path}")
-    
+
     # Load configuration
     with open(config_path) as f:
         data = yaml.safe_load(f)
-    
+
     # Apply environment-specific overrides
     data = apply_environment_overrides(data, environment)
-    
+
     # Determine composer type
     if data.get("heartbeats"):
         return HeartbeatComposer(**kwargs)
@@ -391,12 +391,12 @@ def test_create_composer_heartbeats():
         "agents": {"test": {"model": "default"}},
         "heartbeats": {"test": {"schedule": "* * * * *"}}
     }
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
-        
+
         composer = create_composer(agent_home=tmpdir)
         assert isinstance(composer, HeartbeatComposer)
 
@@ -407,12 +407,12 @@ def test_create_composer_pipeline():
         "agents": {"test": {"model": "default"}},
         "pipeline": [{"segment": "test", "agents": ["test"]}]
     }
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
-        
+
         composer = create_composer(agent_home=tmpdir)
         assert isinstance(composer, PipelineComposer)
 
@@ -423,12 +423,12 @@ def test_create_composer_invalid_config():
         "agents": {"test": {"model": "default"}}
         # Missing heartbeats and pipeline
     }
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
-        
+
         with pytest.raises(KeyError, match="heartbeats or a pipeline"):
             create_composer(agent_home=tmpdir)
 ```
@@ -448,38 +448,38 @@ async def test_create_composer_with_tools():
             "coder": {"schedule": "* * * * *"}
         }
     }
-    
+
     tools = {
         "write_file": Mock(return_value="File written")
     }
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
-        
+
         # Create agent files
         agent_dir = os.path.join(tmpdir, "agents")
         os.makedirs(agent_dir)
         os.makedirs(os.path.join(agent_dir, "heartbeats"))
-        
+
         with open(os.path.join(agent_dir, "coder.md"), 'w') as f:
             f.write("# Coder Agent")
-        
+
         with open(os.path.join(agent_dir, "heartbeats", "coder.md"), 'w') as f:
             f.write("# Coder Heartbeat")
-        
+
         # Mock model initialization
         with patch("langchain.chat_models.init_chat_model") as mock_model:
             mock_model_instance = Mock()
             mock_model.return_value = mock_model_instance
-            
+
             # Create composer
             composer = create_composer(agent_home=agent_dir, tools=tools)
-            
+
             assert isinstance(composer, HeartbeatComposer)
             composer.init()
-            
+
             # Verify tools were passed to agent
             agent = composer.get_agent("coder")
             assert len(agent.tools) == 1
@@ -519,19 +519,19 @@ async def test_create_composer_with_tools():
 ```python
 def create_dynamic_composer(config_source=None, **kwargs):
     """Create composer from various configuration sources"""
-    
+
     if config_source is None:
         # Default: file in agent_home
         return create_composer(**kwargs)
-    
+
     elif isinstance(config_source, dict):
         # From dictionary
         return create_composer_from_dict(config_source, **kwargs)
-    
+
     elif isinstance(config_source, str) and config_source.startswith("http"):
         # From URL
         return create_composer_from_url(config_source, **kwargs)
-    
+
     else:
         raise ValueError(f"Unsupported config_source: {config_source}")
 
@@ -541,7 +541,7 @@ def create_composer_from_dict(config_dict, **kwargs):
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
         yaml.dump(config_dict, f)
         temp_path = f.name
-    
+
     try:
         # Use temp file with create_composer
         kwargs['agent_home'] = os.path.dirname(temp_path)
@@ -556,30 +556,30 @@ def create_composer_from_dict(config_dict, **kwargs):
 ```python
 def create_templated_composer(template_vars=None, **kwargs):
     """Create composer with template variable substitution"""
-    
+
     agent_home = kwargs.get("agent_home")
     if not agent_home:
         raise ValueError("No agent_home set.")
-    
+
     agent_home = Path(agent_home)
     config_path = agent_home / "sublimate-compose.yml"
-    
+
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration not found at {config_path}")
-    
+
     # Load and template configuration
     with open(config_path) as f:
         template = f.read()
-    
+
     # Apply template variables
     template_vars = template_vars or {}
     for key, value in template_vars.items():
         placeholder = f"{{{{ {key} }}}}"
         template = template.replace(placeholder, str(value))
-    
+
     # Parse templated configuration
     data = yaml.safe_load(template)
-    
+
     # Determine composer type
     if data.get("heartbeats"):
         return HeartbeatComposer(**kwargs)

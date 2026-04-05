@@ -31,19 +31,19 @@ graph TB
         A --> F[Context Files]
         A --> G[Dependencies]
     end
-    
+
     subgraph "File System Structure"
         H[agent_home/] --> I[name.md]
         H --> J[heartbeats/name.md]
         H --> K[states/dependency_*.md]
     end
-    
+
     subgraph "Root Context"
         L[root_folder/] --> M[AGENTS.md]
         L --> N[README.md]
         L --> O[docs/*]
     end
-    
+
     B -.-> I
     C -.-> J
     F -.-> M
@@ -125,7 +125,7 @@ sequenceDiagram
     participant A as BaseAgent
     participant F as File System
     participant C as Context
-    
+
     A->>F: Load prompt file (name.md)
     F-->>A: Set self.prompt
     A->>F: Load heartbeat file (heartbeats/name.md)
@@ -197,7 +197,7 @@ sequenceDiagram
     participant A as BaseAgent
     participant LC as LangChain
     participant F as File System
-    
+
     U->>A: run()
     A->>A: get_task_context_as_messages()
     A->>LC: ainvoke(message_history)
@@ -212,7 +212,7 @@ sequenceDiagram
 ### Basic Agent Setup
 
 ```python
-from src.composer.composer import BaseAgent
+from src.orchestration.composer import BaseAgent
 from langchain.chat_models import init_chat_model
 
 # Initialize model
@@ -263,16 +263,16 @@ class CustomAgent(BaseAgent):
     def load_agent(self):
         # Call parent implementation
         super().load_agent()
-        
+
         # Add custom context
         custom_files = [
             self.root_folder / "SPECIFICATION.md",
             self.root_folder / "ARCHITECTURE.md",
             self.root_folder / "CONTRIBUTING.md"
         ]
-        
+
         self.load_files_for(self.context, custom_files)
-        
+
         # Add API documentation
         api_docs = glob.glob(str(self.root_folder / "api" / "*.md"))
         self.load_files_for(self.context, api_docs)
@@ -338,7 +338,7 @@ def test_agent_initialization():
     """Test agent initialization with minimal parameters"""
     mock_model = Mock()
     agent = BaseAgent("test_agent", "/tmp/agents", mock_model)
-    
+
     assert agent.name == "test_agent"
     assert agent.agent_home == Path("/tmp/agents")
     assert agent.model == mock_model
@@ -352,17 +352,17 @@ def test_agent_file_loading():
         agent_dir = Path(tmpdir) / "agents"
         agent_dir.mkdir()
         (agent_dir / "heartbeats").mkdir()
-        
+
         with open(agent_dir / "test.md", "w") as f:
             f.write("# Test Agent Prompt")
-        
+
         with open(agent_dir / "heartbeats" / "test.md", "w") as f:
             f.write("# Test Heartbeat")
-        
+
         mock_model = Mock()
         agent = BaseAgent("test", agent_dir, mock_model)
         agent.load_agent()
-        
+
         assert agent.prompt == "# Test Agent Prompt"
         assert agent.heartbeat == "# Test Heartbeat"
 ```
@@ -375,14 +375,14 @@ def test_agent_invocation():
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = "Mocked response"
         mock_create.return_value = mock_agent
-        
+
         mock_model = Mock()
         agent = BaseAgent("test", "/tmp", mock_model)
-        
+
         response = agent.invoke([
             {"role": "user", "content": "Test message"}
         ])
-        
+
         assert response == "Mocked response"
         mock_agent.invoke.assert_called_once()
 ```
@@ -415,18 +415,18 @@ class SpecializedAgent(BaseAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
-    
+
     def format_message_history(self, message_history, **kwargs):
         # Add specialty to context
         formatted = super().format_message_history(message_history, **kwargs)
-        
+
         if self.specialty:
             specialty_msg = {
                 "role": "system",
                 "content": f"Specialty: {self.specialty}"
             }
             formatted["messages"].insert(0, specialty_msg)
-        
+
         return formatted
 ```
 
@@ -436,19 +436,19 @@ class PluginAgent(BaseAgent):
     def __init__(self, *args, plugins=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.plugins = plugins or []
-    
+
     def invoke(self, message_history, **kwargs):
         # Run pre-invoke plugins
         for plugin in self.plugins:
             message_history = plugin.pre_invoke(self, message_history)
-        
+
         # Invoke agent
         response = super().invoke(message_history, **kwargs)
-        
+
         # Run post-invoke plugins
         for plugin in self.plugins:
             response = plugin.post_invoke(self, response)
-        
+
         return response
 ```
 

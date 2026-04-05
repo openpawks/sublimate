@@ -12,7 +12,7 @@ graph TB
         A[sublimate-compose.yml] --> B[YAML Parser]
         B --> C[Heartbeats Config]
     end
-    
+
     subgraph "HeartbeatComposer Core"
         D[HeartbeatComposer] --> E[BaseComposer]
         D --> F[init_heartbeats]
@@ -20,7 +20,7 @@ graph TB
         F --> H[Heartbeat Factory]
         H --> I[Heartbeat Instances]
     end
-    
+
     subgraph "Control Interface"
         D --> J[up]
         D --> K[down]
@@ -29,13 +29,13 @@ graph TB
         D --> N[get_active_heartbeats]
         D --> O[get_inactive_heartbeats]
     end
-    
+
     subgraph "Execution Layer"
         I --> P[Scheduled Execution]
         P --> Q[Agent Invocation]
         Q --> R[Task Completion]
     end
-    
+
     C -.-> F
     style D fill:#f9f,stroke:#333,stroke-width:3px
 ```
@@ -101,10 +101,10 @@ HeartbeatComposer
 ```yaml
 models:
   # Model definitions
-  
+
 agents:
   # Agent definitions
-  
+
 heartbeats:  # Required section
   agent-name:
     schedule: "cron-expression"
@@ -122,11 +122,11 @@ agents:
   coder:
     model: default
     tools: [write_file, read_file]
-    
+
   tester:
     model: default
     tools: [run_tests]
-    
+
   deployer:
     model: default
     tools: [deploy]
@@ -135,11 +135,11 @@ heartbeats:
   coder:
     schedule: "*/30 * * * *"  # Every 30 minutes
     timeout: "5m"  # Optional: 5 minute timeout
-    
+
   tester:
     schedule: "0 * * * *"  # Hourly at minute 0
     dependencies: [coder]  # Wait for coder to complete
-    
+
   deployer:
     schedule: "0 2 * * *"  # Daily at 2 AM
     dependencies: [tester]  # Wait for tester
@@ -281,7 +281,7 @@ Stops a specific heartbeat.
 ### Basic Heartbeat Composer Setup
 
 ```python
-from src.composer.composer import HeartbeatComposer
+from src.orchestration.composer import HeartbeatComposer
 import asyncio
 
 # Define tools
@@ -313,7 +313,7 @@ asyncio.run(run_for_duration(3600))  # Run for 1 hour
 ### Advanced Control
 
 ```python
-from src.composer.composer import HeartbeatComposer
+from src.orchestration.composer import HeartbeatComposer
 import asyncio
 
 composer = HeartbeatComposer("./agents", {})
@@ -349,7 +349,7 @@ composer.down()
 ### Error Handling and Recovery
 
 ```python
-from src.composer.composer import HeartbeatComposer
+from src.orchestration.composer import HeartbeatComposer
 import asyncio
 
 class ResilientHeartbeatComposer(HeartbeatComposer):
@@ -357,18 +357,18 @@ class ResilientHeartbeatComposer(HeartbeatComposer):
         """Monitor heartbeats and restart failed ones"""
         while True:
             await asyncio.sleep(60)  # Check every minute
-            
+
             for name, heartbeat in self.heartbeats.items():
                 if heartbeat.current and heartbeat.current.done():
                     # Heartbeat task completed (likely due to error)
                     print(f"Heartbeat {name} stopped unexpectedly")
-                    
+
                     # Check for exception
                     try:
                         heartbeat.current.result()
                     except Exception as e:
                         print(f"Error in heartbeat {name}: {e}")
-                    
+
                     # Restart the heartbeat
                     print(f"Restarting heartbeat {name}")
                     self.start_heartbeat(name)
@@ -399,21 +399,21 @@ class DynamicHeartbeatComposer(HeartbeatComposer):
         """Update an agent's schedule dynamically"""
         if agent_name not in self.heartbeats:
             raise ValueError(f"Agent {agent_name} not found")
-        
+
         # Stop current heartbeat
         self.stop_heartbeat(agent_name)
-        
+
         # Update configuration
         if "heartbeats" in self.data and agent_name in self.data["heartbeats"]:
             self.data["heartbeats"][agent_name]["schedule"] = new_cron
-        
+
         # Reinitialize heartbeat
         self.init_heartbeat(agent_name, new_cron)
-        
+
         # Restart if it was running
         if agent_name in self.get_heartbeats_from_settings():
             self.start_heartbeat(agent_name)
-        
+
         # Save updated configuration
         self._save_configuration()
 
@@ -433,17 +433,17 @@ class ConditionalHeartbeatComposer(HeartbeatComposer):
     def __init__(self, *args, conditions=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.conditions = conditions or {}
-    
+
     def init_heartbeat(self, name, cron):
         # Wrap callback with condition check
         original_callback = self.schedule_agent(name)
-        
+
         def conditional_callback():
             condition = self.conditions.get(name)
             if condition and not condition():
                 return f"Heartbeat {name} skipped - condition not met"
             return original_callback()
-        
+
         self.heartbeats[name] = Heartbeat(cron, conditional_callback)
 
 # Usage
@@ -473,19 +473,19 @@ class BatchHeartbeatComposer(HeartbeatComposer):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
         self.pending_tasks = {}
-    
+
     def init_heartbeat(self, name, cron):
         # Store tasks for batch processing
         self.pending_tasks[name] = []
-        
+
         def batch_callback():
             if not self.pending_tasks[name]:
                 return f"No tasks for {name}"
-            
+
             # Process in batches
             tasks = self.pending_tasks[name][:self.batch_size]
             self.pending_tasks[name] = self.pending_tasks[name][self.batch_size:]
-            
+
             # Execute batch
             results = []
             for task in tasks:
@@ -494,11 +494,11 @@ class BatchHeartbeatComposer(HeartbeatComposer):
                     results.append(("success", result))
                 except Exception as e:
                     results.append(("error", str(e)))
-            
+
             return f"Processed {len(results)} tasks: {results}"
-        
+
         self.heartbeats[name] = Heartbeat(cron, batch_callback)
-    
+
     def add_task(self, agent_name, task):
         """Add a task to be processed in next heartbeat"""
         if agent_name not in self.pending_tasks:
@@ -526,10 +526,10 @@ class ThrottledHeartbeatComposer(HeartbeatComposer):
         self.max_concurrent = max_concurrent
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.running_count = 0
-    
+
     def init_heartbeat(self, name, cron):
         original_callback = self.schedule_agent(name)
-        
+
         async def throttled_callback():
             async with self.semaphore:
                 self.running_count += 1
@@ -537,9 +537,9 @@ class ThrottledHeartbeatComposer(HeartbeatComposer):
                     return await original_callback()
                 finally:
                     self.running_count -= 1
-        
+
         self.heartbeats[name] = Heartbeat(cron, throttled_callback)
-    
+
     def get_utilization(self):
         """Get current resource utilization"""
         return self.running_count / self.max_concurrent
@@ -572,32 +572,32 @@ class MonitoredHeartbeatComposer(HeartbeatComposer):
             'errors': {},
             'durations': {}
         }
-    
+
     def init_heartbeat(self, name, cron):
         original_callback = self.schedule_agent(name)
-        
+
         def monitored_callback():
             start_time = datetime.now()
-            
+
             # Initialize metrics
             if name not in self.metrics['executions']:
                 self.metrics['executions'][name] = 0
                 self.metrics['errors'][name] = 0
                 self.metrics['durations'][name] = []
-            
+
             try:
                 result = original_callback()
                 self.metrics['executions'][name] += 1
-                
+
                 # Record duration
                 duration = (datetime.now() - start_time).total_seconds()
                 self.metrics['durations'][name].append(duration)
-                
+
                 return result
             except Exception as e:
                 self.metrics['errors'][name] += 1
                 raise
-    
+
     def get_metrics(self):
         """Get comprehensive metrics"""
         return {
@@ -606,14 +606,14 @@ class MonitoredHeartbeatComposer(HeartbeatComposer):
             'inactive': len(self.get_inactive_heartbeats()),
             'detailed': self.metrics
         }
-    
+
     def get_health_status(self):
         """Get health status summary"""
         status = {}
         for name, heartbeat in self.heartbeats.items():
             executions = self.metrics['executions'].get(name, 0)
             errors = self.metrics['errors'].get(name, 0)
-            
+
             status[name] = {
                 'active': heartbeat.current is not None,
                 'executions': executions,
@@ -635,7 +635,7 @@ async def health_check():
         for agent, stats in health.items():
             if stats['error_rate'] > 0.1:  # 10% error rate threshold
                 print(f"Warning: {agent} has high error rate: {stats['error_rate']:.1%}")
-        
+
         metrics = composer.get_metrics()
         print(f"Total executions: {sum(metrics['detailed']['executions'].values())}")
 ```
@@ -651,16 +651,16 @@ import asyncio
 
 def test_heartbeat_composer_initialization():
     """Test heartbeat composer initialization"""
-    with patch("src.composer.composer.BaseComposer.__init__") as mock_parent_init:
+    with patch("src.orchestration.composer.BaseComposer.__init__") as mock_parent_init:
         composer = HeartbeatComposer("test_home", {})
-        
+
         mock_parent_init.assert_called_once_with("test_home", {})
         assert composer.heartbeats == {}
 
 def test_init_heartbeats():
     """Test heartbeat initialization from configuration"""
     composer = HeartbeatComposer("test_home", {})
-    
+
     # Mock configuration
     composer.data = {
         "heartbeats": {
@@ -668,17 +668,17 @@ def test_init_heartbeats():
             "tester": {"schedule": "0 * * * *"}
         }
     }
-    
+
     # Mock schedule_agent
     composer.schedule_agent = Mock(return_value=lambda: "agent_run")
-    
+
     # Mock Heartbeat constructor
-    with patch("src.composer.composer.Heartbeat") as MockHeartbeat:
+    with patch("src.orchestration.composer.Heartbeat") as MockHeartbeat:
         mock_hb = MagicMock()
         MockHeartbeat.return_value = mock_hb
-        
+
         composer.init_heartbeats()
-        
+
         assert len(composer.heartbeats) == 2
         assert "coder" in composer.heartbeats
         assert "tester" in composer.heartbeats
@@ -689,39 +689,39 @@ def test_init_heartbeats():
 async def test_up_and_down():
     """Test starting and stopping heartbeats"""
     composer = HeartbeatComposer("test_home", {})
-    
+
     # Mock heartbeats
     mock_hb1 = AsyncMock()
     mock_hb1.current = None
     mock_hb1.start.return_value = "task1"
-    
+
     mock_hb2 = AsyncMock()
     mock_hb2.current = None
     mock_hb2.start.return_value = "task2"
-    
+
     composer.heartbeats = {
         "coder": mock_hb1,
         "tester": mock_hb2
     }
-    
+
     # Mock configuration
     composer.get_heartbeats_from_settings = Mock(return_value={
         "coder": {"schedule": "* * * * *"},
         "tester": {"schedule": "0 * * * *"}
     })
-    
+
     # Test up()
     composer.up()
-    
+
     mock_hb1.start.assert_called_once()
     mock_hb2.start.assert_called_once()
-    
+
     # Test down()
     mock_hb1.current = "task1"
     mock_hb2.current = "task2"
-    
+
     composer.down()
-    
+
     mock_hb1.stop.assert_called_once()
     mock_hb2.stop.assert_called_once()
 ```
@@ -745,22 +745,22 @@ async def test_heartbeat_execution_flow():
                 "test_agent": {"schedule": "* * * * *"}
             }
         }
-        
+
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config, f)
-        
+
         # Create agent files
         agent_dir = os.path.join(tmpdir, "agents")
         os.makedirs(agent_dir)
         os.makedirs(os.path.join(agent_dir, "heartbeats"))
-        
+
         with open(os.path.join(agent_dir, "test_agent.md"), 'w') as f:
             f.write("# Test Agent")
-        
+
         with open(os.path.join(agent_dir, "heartbeats", "test_agent.md"), 'w') as f:
             f.write("# Test Heartbeat")
-        
+
         # Mock dependencies
         with patch("langchain.chat_models.init_chat_model") as mock_model:
             with patch("langchain.agents.create_agent") as mock_agent:
@@ -768,20 +768,20 @@ async def test_heartbeat_execution_flow():
                 mock_agent_instance.invoke.return_value = "Agent response"
                 mock_agent_instance.ainvoke.return_value = "Async response"
                 mock_agent.return_value = mock_agent_instance
-                
+
                 # Create composer
                 composer = HeartbeatComposer(agent_dir, {})
                 composer.init()
-                
+
                 # Start heartbeat
                 composer.up()
-                
+
                 # Wait for execution
                 await asyncio.sleep(2)
-                
+
                 # Stop heartbeat
                 composer.down()
-                
+
                 # Verify agent was invoked
                 # Note: Actual invocation depends on timing
                 assert "test_agent" in composer.heartbeats

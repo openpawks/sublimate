@@ -14,14 +14,14 @@ graph TB
         A[sublimate-compose.yml] --> B[YAML Parser]
         B --> C[Pipeline Config]
     end
-    
+
     subgraph "PipelineComposer Core"
         D[PipelineComposer] --> E[BaseComposer]
         D --> F[pipeline Registry]
         D --> G[Process Registry]
         D --> H[init_pipeline]
     end
-    
+
     subgraph "Pipeline Execution"
         I[Pipeline Segment 1] --> J[Agent A]
         I --> K[Agent B]
@@ -29,14 +29,14 @@ graph TB
         L --> N[Agent D]
         O[Pipeline Segment 3] --> P[Agent E]
     end
-    
+
     subgraph "Control Interface"
         D --> Q[up]
         D --> R[down]
         D --> S[execute_pipeline]
         D --> T[execute_segment]
     end
-    
+
     C -.-> H
     style D fill:#f9f,stroke:#333,stroke-width:3px
 ```
@@ -112,24 +112,24 @@ PipelineComposer
 ```yaml
 models:
   # Model definitions
-  
+
 agents:
   # Agent definitions
-  
+
 pipeline:  # Required section (replaces heartbeats)
   - segment: "analysis"
     agents: ["analyzer"]
     condition: "has_requirements()"
-    
+
   - segment: "development"
     agents: ["coder", "reviewer"]
     parallel: true
     dependencies: ["analysis"]
-    
+
   - segment: "testing"
     agents: ["tester"]
     dependencies: ["development"]
-    
+
   - segment: "deployment"
     agents: ["deployer"]
     condition: "tests_passed()"
@@ -142,7 +142,7 @@ models:
   default:
     model_provider: ollama
     model: qwen3.5:0.8b
-    
+
   fast:
     model_provider: ollama
     model: phi3:mini
@@ -152,22 +152,22 @@ agents:
     model: default
     tools: [read_file, analyze_code]
     description: "Analyzes requirements and creates specifications"
-    
+
   coder:
     model: default
     tools: [write_file, read_file, run_tests]
     description: "Implements features based on specifications"
-    
+
   reviewer:
     model: fast
     tools: [read_file, create_issue]
     description: "Reviews code for quality and standards"
-    
+
   tester:
     model: default
     tools: [run_tests, analyze_coverage]
     description: "Runs tests and validates functionality"
-    
+
   deployer:
     model: fast
     tools: [deploy, rollback]
@@ -178,18 +178,18 @@ pipeline:
     agents: ["analyzer"]
     input: "./requirements.md"
     output: "./specifications.md"
-    
+
   - name: "implement_feature"
     agents: ["coder", "reviewer"]
     parallel: true
     dependencies: ["analyze_requirements"]
     input: "./specifications.md"
-    
+
   - name: "test_implementation"
     agents: ["tester"]
     dependencies: ["implement_feature"]
     timeout: "10m"
-    
+
   - name: "deploy_to_prod"
     agents: ["deployer"]
     dependencies: ["test_implementation"]
@@ -268,14 +268,14 @@ graph LR
         A --> D[State Manager]
         A --> E[Error Handler]
     end
-    
+
     subgraph "Pipeline Definition"
         F[YAML Config] --> G[Pipeline Segments]
         G --> H[Agent References]
         G --> I[Conditions]
         G --> J[Dependencies]
     end
-    
+
     subgraph "Execution Flow"
         K[Start] --> L[Segment 1]
         L --> M{Check Condition}
@@ -285,7 +285,7 @@ graph LR
         P --> Q[Next Segment]
         Q --> R[End]
     end
-    
+
     C -.-> N
     B -.-> G
 ```
@@ -300,35 +300,35 @@ class PipelineComposer(BaseComposer):
         self.pipeline = {}
         self.execution_state = {}
         self.results = {}
-    
+
     async def execute_pipeline(self, pipeline_name=None):
         """Execute the entire pipeline or a specific named pipeline"""
         pass
-    
+
     async def execute_segment(self, segment_name):
         """Execute a specific pipeline segment"""
         pass
-    
+
     async def execute_agent_in_pipeline(self, agent_name, context=None):
         """Execute an agent within pipeline context"""
         pass
-    
+
     def get_pipeline_status(self):
         """Get current status of all pipelines"""
         pass
-    
+
     def get_segment_results(self, segment_name):
         """Get results from a specific segment"""
         pass
-    
+
     def pause_pipeline(self, pipeline_name):
         """Pause a running pipeline"""
         pass
-    
+
     def resume_pipeline(self, pipeline_name):
         """Resume a paused pipeline"""
         pass
-    
+
     def cancel_pipeline(self, pipeline_name):
         """Cancel a running pipeline"""
         pass
@@ -339,7 +339,7 @@ class PipelineComposer(BaseComposer):
 ### Basic Pipeline Execution
 
 ```python
-from src.composer.composer import PipelineComposer
+from src.orchestration.composer import PipelineComposer
 import asyncio
 
 # Initialize composer
@@ -355,7 +355,7 @@ composer.init()
 async def run_pipeline():
     results = await composer.execute_pipeline()
     print(f"Pipeline completed with results: {results}")
-    
+
     # Check individual segment results
     analysis_results = composer.get_segment_results("analysis")
     print(f"Analysis results: {analysis_results}")
@@ -369,14 +369,14 @@ asyncio.run(run_pipeline())
 class ConditionalPipelineComposer(PipelineComposer):
     async def execute_segment(self, segment_name):
         segment = self.pipeline[segment_name]
-        
+
         # Check condition
         if "condition" in segment:
             condition_func = self._parse_condition(segment["condition"])
             if not condition_func():
                 print(f"Skipping segment {segment_name} - condition not met")
                 return {"status": "skipped", "reason": "condition_not_met"}
-        
+
         # Execute segment
         return await super().execute_segment(segment_name)
 
@@ -395,7 +395,7 @@ await composer.execute_pipeline()
 class ParallelPipelineComposer(PipelineComposer):
     async def execute_segment(self, segment_name):
         segment = self.pipeline[segment_name]
-        
+
         if segment.get("parallel", False):
             # Execute agents in parallel
             agent_tasks = []
@@ -404,10 +404,10 @@ class ParallelPipelineComposer(PipelineComposer):
                     self.execute_agent_in_pipeline(agent_name, segment.get("context"))
                 )
                 agent_tasks.append(task)
-            
+
             # Wait for all agents to complete
             results = await asyncio.gather(*agent_tasks, return_exceptions=True)
-            
+
             # Process results
             return {
                 "status": "completed",
@@ -436,7 +436,7 @@ class ResilientPipelineComposer(PipelineComposer):
     async def execute_segment(self, segment_name):
         segment = self.pipeline[segment_name]
         max_retries = segment.get("max_retries", 3)
-        
+
         for attempt in range(max_retries):
             try:
                 return await super().execute_segment(segment_name)
@@ -452,11 +452,11 @@ class ResilientPipelineComposer(PipelineComposer):
                             "error": str(e),
                             "attempts": attempt + 1
                         }
-                
+
                 # Wait before retry
                 retry_delay = segment.get("retry_delay", 60)
                 await asyncio.sleep(retry_delay)
-        
+
         return {"status": "failed", "error": "max_retries_exceeded"}
 ```
 
@@ -467,22 +467,22 @@ class GracefulPipelineComposer(PipelineComposer):
     async def execute_segment(self, segment_name):
         segment = self.pipeline[segment_name]
         fallback_agents = segment.get("fallback_agents", [])
-        
+
         try:
             return await super().execute_segment(segment_name)
         except Exception as e:
             print(f"Segment {segment_name} failed: {e}")
-            
+
             # Try fallback agents
             if fallback_agents:
                 print(f"Trying fallback agents: {fallback_agents}")
                 segment["agents"] = fallback_agents
                 return await super().execute_segment(segment_name)
-            
+
             # If no fallback, check if segment is optional
             if segment.get("optional", False):
                 return {"status": "skipped", "reason": "optional_failed"}
-            
+
             raise
 ```
 
@@ -499,7 +499,7 @@ import asyncio
 async def test_pipeline_execution():
     """Test basic pipeline execution"""
     composer = PipelineComposer("test_home", {})
-    
+
     # Mock pipeline configuration
     composer.pipeline = {
         "analysis": {
@@ -511,26 +511,26 @@ async def test_pipeline_execution():
             "dependencies": ["analysis"]
         }
     }
-    
+
     # Mock agents
     mock_analyzer = AsyncMock()
     mock_analyzer.run.return_value = "Analysis complete"
-    
+
     mock_coder = AsyncMock()
     mock_coder.run.return_value = "Development complete"
-    
+
     composer.agents = {
         "analyzer": mock_analyzer,
         "coder": mock_coder
     }
-    
+
     # Execute pipeline
     results = await composer.execute_pipeline()
-    
+
     # Verify execution order
     assert mock_analyzer.run.called
     assert mock_coder.run.called
-    
+
     # Verify dependency order
     analyzer_call_time = mock_analyzer.run.call_args[0][0]
     coder_call_time = mock_coder.run.call_args[0][0]
@@ -565,25 +565,25 @@ async def test_complete_pipeline_flow():
                 }
             ]
         }
-        
+
         # Create configuration file
         config_path = os.path.join(tmpdir, "sublimate-compose.yml")
         with open(config_path, 'w') as f:
             yaml.dump(config, f)
-        
+
         # Create composer
         composer = PipelineComposer(tmpdir, {})
         composer.init()
-        
+
         # Mock agent execution
         with patch.object(composer.agents["writer"], 'run') as mock_write:
             with patch.object(composer.agents["reviewer"], 'run') as mock_review:
                 mock_write.return_value = "# Test Document"
                 mock_review.return_value = "Document reviewed"
-                
+
                 # Execute pipeline
                 results = await composer.execute_pipeline()
-                
+
                 # Verify data passing
                 # Reviewer should receive writer's output
                 review_context = mock_review.call_args[0][0]

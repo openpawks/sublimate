@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Composer module is the core orchestration engine of the Sublimate system, providing a framework for managing AI agents, scheduling their execution, and coordinating complex workflows. This documentation covers all classes and functions in the `src/composer/composer.py` module.
+The Composer module is the core orchestration engine of the Sublimate system, providing a framework for managing AI agents, scheduling their execution, and coordinating complex workflows. This documentation covers all classes and functions in the `src.orchestration/composer.py` module.
 
 ## Module Architecture
 
@@ -15,16 +15,16 @@ graph TB
         C --> E[PipelineComposer]
         F[Heartbeat] --> D
     end
-    
+
     subgraph "Factory Function"
         G[create_composer] --> D
         G --> E
     end
-    
+
     subgraph "Configuration"
         H[sublimate-compose.yml] --> C
     end
-    
+
     style C fill:#f9f,stroke:#333,stroke-width:3px
 ```
 
@@ -87,7 +87,7 @@ heartbeats:
 ### 3. Create and Run Composer
 
 ```python
-from src.composer.composer import create_composer
+from src.orchestration.composer import create_composer
 
 # Define tools
 def write_file(path, content):
@@ -277,7 +277,7 @@ pytest tests/test_composer_integration.py -v
 
 ### Coverage Report
 ```bash
-pytest tests/test_composer.py --cov=src.composer.composer --cov-report=html
+pytest tests/test_composer.py --cov=src.orchestration.composer --cov-report=html
 ```
 
 ## Extension Patterns
@@ -288,7 +288,7 @@ class SpecializedAgent(BaseAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
-    
+
     def format_message_history(self, message_history, **kwargs):
         formatted = super().format_message_history(message_history, **kwargs)
         if self.specialty:
@@ -305,7 +305,7 @@ class PluginComposer(BaseComposer):
     def __init__(self, *args, plugins=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.plugins = plugins or []
-    
+
     def init(self):
         for plugin in self.plugins:
             plugin.pre_init(self)
@@ -400,5 +400,5 @@ When reporting issues, include:
 
 ---
 
-*Last updated: April 5, 2026*  
+*Last updated: April 5, 2026*
 *Documentation version: 1.0.0*

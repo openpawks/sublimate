@@ -7,8 +7,8 @@ import tempfile
 import yaml
 from pathlib import Path
 
-from src.composer.composer import BaseComposer
-from src.composer.tools import get_all_tools
+from src.orchestration.composer import BaseComposer
+from src.orchestration.tools import get_all_tools
 
 
 class TestFileAccessIntegration:

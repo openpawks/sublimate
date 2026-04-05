@@ -4,13 +4,19 @@ from langchain.chat_models import init_chat_model
 
 from unittest.mock import patch, MagicMock, call, AsyncMock
 
-from dotenv import load_dotenv
 import os
-import yaml
 import asyncio
+import yaml
 from datetime import datetime
 
-from src.composer import composer
+from src.orchestration import (
+    BaseAgent,
+    BaseComposer,
+    HeartbeatComposer,
+    PipelineComposer,
+    Heartbeat,
+)
+
 
 # params to test
 agent_homes = ["./agent_templates/default/"]
@@ -19,7 +25,7 @@ project_root_folder = "./tmp/tests/"
 
 class TestBaseAgent:
     def setup_method(self, method):
-        self.agent = composer.BaseAgent(
+        self.agent = BaseAgent(
             "coder",  # TODO: paramaterize
             agent_homes[0],
             init_chat_model(
@@ -84,7 +90,7 @@ class TestBaseAgent:
 
     def test_add_dependency(self):
         # Create another mock agent
-        mock_agent = composer.BaseAgent(
+        mock_agent = BaseAgent(
             "tester",
             agent_homes[0],
             init_chat_model("ollama:qwen3.5:0.8b"),
@@ -113,7 +119,7 @@ class TestBaseAgent:
 
 class TestBaseComposer:
     def setup_method(self, method):
-        self.composer = composer.BaseComposer(
+        self.composer = BaseComposer(
             agent_homes[0],  # TODO: parameterize
             {},  # no tools rn
         )
@@ -172,11 +178,10 @@ class TestBaseComposer:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(FileNotFoundError):
-                composer.BaseComposer(tmpdir, {})
+                BaseComposer(tmpdir, {})
 
     def test_missing_keys_raises(self):
         import tempfile
-        import yaml
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = os.path.join(tmpdir, "sublimate-compose.yml")
@@ -184,17 +189,17 @@ class TestBaseComposer:
             with open(config_path, "w") as f:
                 yaml.dump({"agents": {}}, f)
             with pytest.raises(KeyError):
-                composer.BaseComposer(tmpdir, {})
+                BaseComposer(tmpdir, {})
             # Write config missing agents
             with open(config_path, "w") as f:
                 yaml.dump({"models": {}}, f)
             with pytest.raises(KeyError):
-                composer.BaseComposer(tmpdir, {})
+                BaseComposer(tmpdir, {})
             # Write config with heartbeats but missing models
             with open(config_path, "w") as f:
                 yaml.dump({"agents": {}, "heartbeats": {}}, f)
             with pytest.raises(KeyError):
-                composer.BaseComposer(tmpdir, {})
+                BaseComposer(tmpdir, {})
 
 
 class TestHeartbeat:
@@ -203,10 +208,10 @@ class TestHeartbeat:
         self.mock_agent = MagicMock()
         self.mock_agent.invoke.return_value = "invoke result"
         self.mock_agent.ainvoke.return_value = "ainvoke result"
-        self.heartbeat = composer.Heartbeat("* * * * *", self.mock_agent.ainvoke)
+        self.heartbeat = Heartbeat("* * * * *", self.mock_agent.ainvoke)
 
-    @patch("src.composer.composer.datetime")
-    @patch("src.composer.composer.croniter")
+    @patch("src.orchestration.heartbeat.datetime")
+    @patch("src.orchestration.heartbeat.croniter")
     def test_get_next(self, mock_croniter, mock_datetime):
         mock_now = datetime(2025, 1, 1, 0, 0, 0)
         mock_datetime.now.return_value = mock_now
@@ -216,8 +221,8 @@ class TestHeartbeat:
         mock_croniter.assert_called_once_with("* * * * *", mock_now)
         assert result == mock_iter
 
-    @patch("src.composer.composer.datetime")
-    @patch("src.composer.composer.asyncio.sleep", new_callable=AsyncMock)
+    @patch("src.orchestration.heartbeat.datetime")
+    @patch("src.orchestration.heartbeat.asyncio.sleep", new_callable=AsyncMock)
     def test_wait_until_datetime(self, mock_sleep, mock_datetime):
         mock_now = datetime(2025, 1, 1, 0, 0, 0)
         mock_datetime.now.return_value = mock_now
@@ -225,8 +230,8 @@ class TestHeartbeat:
         _ = self.heartbeat.wait_until_datetime(target)
         mock_sleep.assert_called_once_with(60.0)
 
-    @patch("src.composer.composer.datetime")
-    @patch("src.composer.composer.asyncio.sleep", new_callable=AsyncMock)
+    @patch("src.orchestration.heartbeat.datetime")
+    @patch("src.orchestration.heartbeat.asyncio.sleep", new_callable=AsyncMock)
     def test_wait_until_datetime_past(self, mock_sleep, mock_datetime):
         mock_now = datetime(2025, 1, 1, 0, 1, 0)
         mock_datetime.now.return_value = mock_now
@@ -240,34 +245,32 @@ class TestHeartbeat:
 
     def test_start_stop(self):
         # Mock daemon coroutine
-        with patch.object(
-            self.heartbeat, "daemon", new_callable=AsyncMock
-        ) as mock_daemon:
-            mock_task = MagicMock()
-            with patch(
-                "src.composer.composer.asyncio.create_task", return_value=mock_task
-            ) as mock_create:
-                task = self.heartbeat.start()
-                assert task == mock_task
-                assert self.heartbeat.current == mock_task
-                mock_create.assert_called_once()
-                args, _ = mock_create.call_args
-                assert asyncio.iscoroutine(args[0])
-                # Test double start raises RuntimeError
-                with pytest.raises(RuntimeError):
-                    self.heartbeat.start()
-                # Stop
-                result = self.heartbeat.stop()
-                assert result == mock_task.cancel.return_value
-                mock_task.cancel.assert_called_once()
-                # Stop again returns None
-                self.heartbeat.current = None
-                assert self.heartbeat.stop() is None
+        mock_task = MagicMock()
+        with patch(
+            "src.orchestration.heartbeat.asyncio.create_task",
+            return_value=mock_task,
+        ) as mock_create:
+            task = self.heartbeat.start()
+            assert task == mock_task
+            assert self.heartbeat.current == mock_task
+            mock_create.assert_called_once()
+            args, _ = mock_create.call_args
+            assert asyncio.iscoroutine(args[0])
+            # Test double start raises RuntimeError
+            with pytest.raises(RuntimeError):
+                self.heartbeat.start()
+            # Stop
+            result = self.heartbeat.stop()
+            assert result == mock_task.cancel.return_value
+            mock_task.cancel.assert_called_once()
+            # Stop again returns None
+            self.heartbeat.current = None
+            assert self.heartbeat.stop() is None
 
 
 class TestHeartbeatComposer:
     def setup_method(self, method):
-        self.composer = composer.HeartbeatComposer(agent_homes[0], {})
+        self.composer = HeartbeatComposer(agent_homes[0], {})
 
     def teardown_method(self):
         pass
@@ -320,7 +323,7 @@ class TestHeartbeatComposer:
             mock_stop.return_value = True
             result = self.composer.stop_heartbeat("main")
             mock_stop.assert_called_once()
-            assert result == True
+            assert result
 
     def test_up(self):
         self.composer.init_chat_models()
@@ -336,7 +339,7 @@ class TestHeartbeatComposer:
 
 class TestPipelineComposer:
     def setup_method(self, method):
-        self.composer = composer.PipelineComposer(agent_homes[0], {})
+        self.composer = PipelineComposer(agent_homes[0], {})
 
     def teardown_method(self):
         pass

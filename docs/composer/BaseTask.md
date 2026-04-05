@@ -31,7 +31,7 @@ The current implementation is minimal, containing only an empty `__init__` metho
 ## Usage Example
 
 ```python
-from src.composer.composer import BaseTask
+from src.orchestration.composer import BaseTask
 
 class CustomTask(BaseTask):
     def __init__(self, task_name, task_data):
@@ -39,7 +39,7 @@ class CustomTask(BaseTask):
         self.name = task_name
         self.data = task_data
         self.status = "pending"
-    
+
     def execute(self):
         """Execute the task logic"""
         self.status = "running"
@@ -80,7 +80,7 @@ graph TD
     B --> E[BaseAgent]
     C --> F[Heartbeat]
     D --> G[PipelineComposer]
-    
+
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:1px
     style C fill:#ccf,stroke:#333,stroke-width:1px
@@ -100,7 +100,7 @@ class EnhancedBaseTask:
         self.status = "pending"
         self.result = None
         self.error = None
-    
+
     def to_dict(self):
         """Convert task to dictionary representation"""
         return {
@@ -111,17 +111,17 @@ class EnhancedBaseTask:
             "result": self.result,
             "error": self.error
         }
-    
+
     def update_status(self, status):
         """Update task status and timestamp"""
         self.status = status
         self.updated_at = datetime.now()
-    
+
     def set_result(self, result):
         """Set task result and mark as completed"""
         self.result = result
         self.update_status("completed")
-    
+
     def set_error(self, error):
         """Set task error and mark as failed"""
         self.error = str(error)
@@ -191,10 +191,10 @@ class TaskFactory:
             "pipeline": PipelineTask,
             "custom": CustomTask
         }
-        
+
         if task_type not in task_classes:
             raise ValueError(f"Unknown task type: {task_type}")
-        
+
         return task_classes[task_type](**kwargs)
 
 # Usage
@@ -221,7 +221,7 @@ class LoggedTask(BaseTask):
     def __init__(self, name):
         super().__init__()
         self.name = name
-    
+
     @task_logger
     def execute(self):
         """Execute task with logging"""

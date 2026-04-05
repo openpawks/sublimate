@@ -6,13 +6,14 @@ in the Sublimate system.
 """
 
 from .composer import (
-    BaseTask,
-    BaseAgent,
     BaseComposer,
-    Heartbeat,
     HeartbeatComposer,
     PipelineComposer,
 )
+
+from .agent import BaseAgent
+
+from .heartbeat import Heartbeat
 
 from .tools import (
     write_file,

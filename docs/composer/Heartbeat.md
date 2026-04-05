@@ -16,21 +16,21 @@ graph TB
         E --> F[Callback Execution]
         F --> G[Agent Invocation]
     end
-    
+
     subgraph "Execution Flow"
         H[start] --> I[daemon loop]
         I --> J{Wait for next execution}
         J --> K[Execute callback]
         K --> I
     end
-    
+
     subgraph "Control Interface"
         L[Heartbeat Instance] --> M[start]
         L --> N[stop]
         L --> O[beat]
         L --> P[abeat]
     end
-    
+
     style L fill:#f9f,stroke:#333,stroke-width:3px
 ```
 
@@ -146,7 +146,7 @@ sequenceDiagram
     participant W as wait_until_datetime
     participant C as callback
     participant S as Sleep
-    
+
     loop Infinite Loop
         D->>D: get_next()
         D->>W: wait_until_datetime(next_time)
@@ -215,7 +215,7 @@ def stop(self):
 ### Basic Heartbeat Setup
 
 ```python
-from src.composer.composer import Heartbeat
+from src.orchestration.composer import Heartbeat
 import asyncio
 
 def simple_task():
@@ -228,10 +228,10 @@ heartbeat = Heartbeat("* * * * *", simple_task)
 # Start the heartbeat
 async def run_heartbeat():
     task = heartbeat.start()
-    
+
     # Run for 5 minutes
     await asyncio.sleep(300)
-    
+
     # Stop the heartbeat
     heartbeat.stop()
     await task  # Wait for task to complete
@@ -242,7 +242,7 @@ asyncio.run(run_heartbeat())
 ### Agent Integration
 
 ```python
-from src.composer.composer import Heartbeat, BaseAgent
+from src.orchestration.composer import Heartbeat, BaseAgent
 
 # Create an agent
 agent = BaseAgent("coder", "./agents", model, [])
@@ -267,24 +267,24 @@ heartbeat.stop()
 
 ```python
 import asyncio
-from src.composer.composer import Heartbeat
+from src.orchestration.composer import Heartbeat
 
 class HeartbeatManager:
     def __init__(self):
         self.heartbeats = {}
-    
+
     def add_heartbeat(self, name, cron, callback):
         self.heartbeats[name] = Heartbeat(cron, callback)
-    
+
     async def start_all(self):
         tasks = []
         for name, heartbeat in self.heartbeats.items():
             task = heartbeat.start()
             tasks.append((name, task))
             print(f"Started heartbeat: {name}")
-        
+
         return tasks
-    
+
     async def stop_all(self):
         for name, heartbeat in self.heartbeats.items():
             heartbeat.stop()
@@ -328,7 +328,7 @@ class ResilientHeartbeat(Heartbeat):
         super().__init__(cron, callback)
         self.max_retries = max_retries
         self.retry_count = 0
-    
+
     async def abeat(self):
         while self.retry_count < self.max_retries:
             try:
@@ -352,7 +352,7 @@ class MonitoredHeartbeat(Heartbeat):
         self.execution_count = 0
         self.last_execution = None
         self.errors = []
-    
+
     async def daemon(self):
         while True:
             try:
@@ -380,11 +380,11 @@ class OptimizedHeartbeat(Heartbeat):
             next_time = self.get_next().get_next(datetime)
             # Calculate sleep time once per iteration
             sleep_time = (next_time - datetime.now()).total_seconds()
-            
+
             if sleep_time > 0:
                 # Use a single sleep call
                 await asyncio.sleep(sleep_time)
-            
+
             try:
                 await self.abeat()
             except Exception:
@@ -400,7 +400,7 @@ class ResourceAwareHeartbeat(Heartbeat):
         super().__init__(cron, callback)
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.active_tasks = set()
-    
+
     async def abeat(self):
         async with self.semaphore:
             task = asyncio.create_task(self._safe_callback())
@@ -409,7 +409,7 @@ class ResourceAwareHeartbeat(Heartbeat):
                 return await task
             finally:
                 self.active_tasks.remove(task)
-    
+
     async def _safe_callback(self):
         # Wrapped callback with timeout
         try:
@@ -431,13 +431,13 @@ class SecureHeartbeat(Heartbeat):
     def __init__(self, cron, callback, allowed_callbacks=None):
         super().__init__(cron, callback)
         self.allowed_callbacks = allowed_callbacks or []
-    
+
     async def abeat(self):
         # Validate callback is allowed
         callback_name = self.callback.__name__
         if self.allowed_callbacks and callback_name not in self.allowed_callbacks:
             raise SecurityError(f"Callback {callback_name} not allowed")
-        
+
         return await super().abeat()
 ```
 
@@ -448,12 +448,12 @@ class IsolatedHeartbeat(Heartbeat):
     def __init__(self, cron, callback, isolation_context=None):
         super().__init__(cron, callback)
         self.isolation_context = isolation_context or {}
-    
+
     async def abeat(self):
         # Execute in isolated context
         with self._create_isolation():
             return await super().abeat()
-    
+
     def _create_isolation(self):
         # Implement context isolation (e.g., chroot, container, etc.)
         return IsolationContext(**self.isolation_context)
@@ -473,7 +473,7 @@ def test_heartbeat_initialization():
     """Test heartbeat initialization"""
     mock_callback = Mock()
     heartbeat = Heartbeat("* * * * *", mock_callback)
-    
+
     assert heartbeat.cron == "* * * * *"
     assert heartbeat.callback == mock_callback
     assert heartbeat.current is None
@@ -482,16 +482,16 @@ def test_heartbeat_start_stop():
     """Test heartbeat start and stop"""
     mock_callback = Mock()
     heartbeat = Heartbeat("* * * * *", mock_callback)
-    
+
     # Start heartbeat
     task = heartbeat.start()
     assert heartbeat.current is not None
     assert isinstance(task, asyncio.Task)
-    
+
     # Stop heartbeat
     result = heartbeat.stop()
     assert result is True  # Task was cancelled
-    
+
     # Verify cannot start twice
     with pytest.raises(RuntimeError):
         heartbeat.start()
@@ -501,18 +501,18 @@ async def test_heartbeat_execution():
     """Test heartbeat execution"""
     mock_callback = AsyncMock(return_value="test_result")
     heartbeat = Heartbeat("* * * * *", mock_callback)
-    
+
     # Mock get_next to return immediate execution
     with patch.object(heartbeat, 'get_next') as mock_get_next:
         mock_iterator = Mock()
         mock_iterator.get_next.return_value = datetime.now()
         mock_get_next.return_value = mock_iterator
-        
+
         # Start and immediately stop
         task = heartbeat.start()
         await asyncio.sleep(0.1)  # Allow one execution
         heartbeat.stop()
-        
+
         # Verify callback was called
         mock_callback.assert_called_once()
 ```
@@ -524,26 +524,26 @@ async def test_heartbeat_execution():
 async def test_heartbeat_schedule_accuracy():
     """Test that heartbeats execute at correct times"""
     execution_times = []
-    
+
     def record_execution():
         execution_times.append(datetime.now())
         return "executed"
-    
+
     # Create heartbeat that runs every 2 seconds
     heartbeat = Heartbeat("*/2 * * * * *", record_execution)  # Seconds field added
-    
+
     # Start heartbeat
     task = heartbeat.start()
-    
+
     # Run for 6 seconds
     await asyncio.sleep(6)
-    
+
     # Stop heartbeat
     heartbeat.stop()
-    
+
     # Should have executed ~3 times (at 0, 2, 4 seconds)
     assert 2 <= len(execution_times) <= 4
-    
+
     # Verify spacing between executions
     for i in range(1, len(execution_times)):
         spacing = (execution_times[i] - execution_times[i-1]).total_seconds()
@@ -560,7 +560,7 @@ class RetryHeartbeat(Heartbeat):
         super().__init__(cron, callback)
         self.retry_delay = retry_delay
         self.max_retries = max_retries
-    
+
     async def abeat(self):
         for attempt in range(self.max_retries):
             try:
@@ -579,7 +579,7 @@ class ConditionalHeartbeat(Heartbeat):
     def __init__(self, cron, callback, condition=None):
         super().__init__(cron, callback)
         self.condition = condition or (lambda: True)
-    
+
     async def abeat(self):
         if self.condition():
             return await super().abeat()
@@ -594,24 +594,24 @@ class BatchHeartbeat(Heartbeat):
         super().__init__(cron, callback)
         self.batch_size = batch_size
         self.pending_items = []
-    
+
     def add_item(self, item):
         self.pending_items.append(item)
-    
+
     async def abeat(self):
         if not self.pending_items:
             return "No items to process"
-        
+
         # Process in batches
         results = []
         for i in range(0, len(self.pending_items), self.batch_size):
             batch = self.pending_items[i:i + self.batch_size]
             result = await self.callback(batch)
             results.append(result)
-        
+
         # Clear processed items
         self.pending_items = self.pending_items[len(results) * self.batch_size:]
-        
+
         return f"Processed {len(results)} batches"
 ```
 

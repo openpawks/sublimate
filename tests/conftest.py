@@ -6,8 +6,8 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture(autouse=True)
 def mock_invokes():
     with (
-        patch("src.composer.composer.BaseAgent.invoke") as mock_invoke,
-        patch("src.composer.composer.BaseAgent.ainvoke") as mock_ainvoke,
+        patch("src.orchestration.composer.BaseAgent.invoke") as mock_invoke,
+        patch("src.orchestration.composer.BaseAgent.ainvoke") as mock_ainvoke,
     ):
         mock_invoke.return_value = "Mocked agent.invoke()"
         mock_ainvoke.return_value = "Mocked agent.ainvoke()"
@@ -39,7 +39,7 @@ def mock_create_agent():
 def mock_fetch_api_key():
     """Mock fetch_api_key_for_provider to return dummy key."""
     with patch(
-        "src.composer.composer.BaseComposer.fetch_api_key_for_provider",
+        "src.orchestration.composer.BaseComposer.fetch_api_key_for_provider",
         return_value="dummy-api-key",
     ) as mock:
         yield mock
