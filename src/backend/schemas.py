@@ -18,9 +18,9 @@ class UserResponse(UserBase):
 
 
 class ProjectBase(BaseModel):
+    # TODO: project name?
     root_dir: str
     agent_root_dir: str  # not sure if this should be public facing...
-
 
 class ProjectCreate(ProjectBase):
     pass
@@ -60,7 +60,7 @@ class ChatResponse(ChatBase):
 
 
 class TaskBase(BaseModel):
-    chat_id: int
+    pass
 
 
 class TaskCreate(TaskBase):
@@ -68,11 +68,12 @@ class TaskCreate(TaskBase):
 
 
 class TaskResponse(TaskBase):
+    chat_id: int
     project_id: int
     created_at: datetime
 
 
 class HeartbeatBase(BaseModel):
     cron: str
-    dependencies: list[String]  # TODO: fix lmao
+    dependencies: list[str]  
     content: str
