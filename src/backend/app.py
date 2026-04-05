@@ -22,11 +22,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# NOTE: in the PLAN.md, it doesn't prefix with API... but it should be just imagine it is.
+# NOTE: in the PLAN.md, it doesn't prefix with api/... but it should be just imagine it is.
 app.include_router(users.router, prefix="api/users/", tags=["users"])
 app.include_router(projects.router, prefix="api/projects/", tags=["projects"])
-app.include_router(auth.router, prefix="api/auth/", tags=["projects"])
-app.include_router(providers.router, prefix="api/router/", tags=["projects"])
+app.include_router(auth.router, prefix="api/auth/", tags=["auth"])
+app.include_router(providers.router, prefix="api/providers/", tags=["providers"])
 
 @app.get("/")
 def hello():
