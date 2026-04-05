@@ -1,0 +1,85 @@
+repos:
+  # Ruff - Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.5
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Gitleaks - Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        args: [--verbose, --redact]
+
+  # ShellCheck - Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # ESLint - JavaScript linting
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.0.0-alpha.2
+    hooks:
+      - id: eslint
+        args: [--fix]
+        files: \.[jt]sx?$
+        additional_dependencies:
+          - eslint@8.57.0
+          - eslint-config-airbnb-base@15.0.0
+          - eslint-plugin-import@2.29.1
+
+  # General checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: check-toml
+      - id: check-xml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: requirements-txt-fixer
+
+  # Custom local checks
+  - repo: local
+    hooks:
+      - id: datetime-timezone-check
+        name: Check datetime timezone awareness
+        entry: python .pre-commit-config.d/check_datetime_timezone.py
+        language: python
+        files: \.py$
+        pass_filenames: true
+
+      - id: session-context-manager
+        name: Check for session context managers
+        entry: python .pre-commit-config.d/check_session_context.py
+        language: python
+        files: \.py$
+        pass_filenames: true
+
+      - id: ssrf-protection
+        name: Check SSRF protection
+        entry: python .pre-commit-config.d/check_ssrf.py
+        language: python
+        files: \.py$
+        pass_filenames: true
+
+      - id: run-tests
+        name: Run pytest
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [push]
