@@ -130,6 +130,205 @@ What's really important here though is a lot of the code should be understood, s
 Otherwise projects can balloon quickly and become difficult to decipher
 I'm going to _attempt_ to keep this project as simple and lightweight as possible.
 
+# Priority List
+
+## HIGH
+- agent
+- composer
+- server
+- tests
+- clients
+- tools etc 
+
+## MID 
+- docker
+- pre commit hooks (dk how to set them up, but they're _really_ useful, check [Local Deep Research's](https://github.com/LearningCircuit/local-deep-research/blob/main/CONTRIBUTING.md) pre commit hooks they are GOLD STANDARD)
+- authentication
+- template generator
+- more templates (can easily be vibe coded, so no biggie)
+- versioning (you can _literally_ just use git...)
+
+## LOW
+- react frontend (who really wants to write react)
+
+# Potential endpoints 
+
+## Note on AI usage
+As much as I know we're supposed to use AI sparingly, I've briefly reviewed theses endpoints and they seem like good ideas for the most part, so I've added them to the PLAN.md
+
+Thanks for the detailed project overview! This is an ambitious multi-agent orchestration system with a lot of moving parts. Let me provide a comprehensive endpoint plan for the FastAPI server that ties everything together.
+
+## Potential FastAPI Endpoints
+
+### **Authentication & User Management**
+```
+POST   /auth/register          - Create new user account
+POST   /auth/login             - Login (returns JWT/session token)
+POST   /auth/logout            - Invalidate session
+POST   /auth/refresh           - Refresh access token
+GET    /users/me               - Get current user profile
+PUT    /users/me               - Update user profile
+POST   /users/me/change-password - Change password
+```
+
+### **Project Management** (this is NOT sublimate-compose.yml editing)
+```
+GET    /projects               - List all projects for user
+POST   /projects               - Create new project
+GET    /projects/{project_id}  - Get project details
+PUT    /projects/{project_id}  - Update project configuration
+PATCH  /projects/{project_id}
+DELETE /projects/{project_id}  - Delete project
+POST   /projects/{project_id}/duplicate - Clone project
+GET    /projects/{project_id}/export - Export project as zip/tarball
+POST   /projects/import        - Import project from archive
+```
+
+### **Agent Configuration** (NEEDS REVIEW!)
+```
+GET    /projects/{project_id}/agents          - List agents in project
+POST   /projects/{project_id}/agents          - Add new agent
+GET    /projects/{project_id}/agents/{agent_name} - Get agent config 
+PUT    /projects/{project_id}/agents/{agent_name} - Update agent config
+DELETE /projects/{project_id}/agents/{agent_name} - Remove agent
+GET    /agent-templates         - List available agent templates
+POST   /projects/{project_id}/agents/from-template - Create agent from template
+```
+
+### Agent Heartbeat Configuration (i wrote this c:)
+```
+CRUD for /projects/{project_id}/agents/{agent_name}/heartbeat i guess...
+
+```
+### **Sublimate Compose Management** (NEEDS REVIEW!)
+```
+GET    /projects/{project_id}/compose         - Get sublimate-compose.yml
+PUT    /projects/{project_id}/compose         - Update compose configuration
+PATCH  /projects/{project_id}/compose
+POST   /projects/{project_id}/compose/validate - Validate compose syntax
+GET    /projects/{project_id}/compose/schema  - Get JSON schema for compose file
+```
+
+
+### **Provider Management** (Per user?)
+```
+GET    /providers               - List configured AI providers 
+POST   /providers               - Add new provider configuration
+GET    /providers/{provider_id} - Get provider details
+PUT    /providers/{provider_id} - Update provider config
+DELETE /providers/{provider_id} - Remove provider
+GET    /providers/{provider_id}/test - Test provider connection
+GET    /providers/available     - List available provider types (OpenAI, Anthropic, etc.)
+```
+
+### **Session & Runtime Management**
+```
+POST   /projects/{project_id}/compose/up - Start agent orchestration
+POST   /projects/{project_id}/compose/down - Stop running session
+GET    /projects/{project_id}/compose/status - Get current session status
+DELETE /projects/{project_id}/compose/{session_id} - Terminate specific session
+GET    /sessions/active         - List all active sessions for user
+```
+
+### **Task Management**
+```
+GET    /projects/{project_id}/tasks           - List tasks (with filtering)
+POST   /projects/{project_id}/tasks           - Create new task
+GET    /projects/{project_id}/tasks/{task_id} - Get task details
+PUT    /projects/{project_id}/tasks/{task_id} - Update task
+DELETE /projects/{project_id}/tasks/{task_id} - Delete/close task
+POST   /projects/{project_id}/tasks/{task_id}/assign - Assign to agent
+POST   /projects/{project_id}/tasks/{task_id}/status - Update task status
+GET    /projects/{project_id}/tasks/{task_id}/history - Get task history/logs
+```
+
+### **Heartbeat & Monitoring**
+```
+GET    /projects/{project_id}/heartbeats      - Get all heartbeat statuses
+GET    /projects/{project_id}/agents/{agent_name}/heartbeat - Get specific agent heartbeat
+POST   /webhooks/heartbeat/{agent_id}         - Webhook for agent heartbeats
+GET    /health/agents          - Overall agent health status
+GET    /metrics                - System metrics (Prometheus format)
+```
+
+### **File & Configuration Management**
+```
+GET    /projects/{project_id}/files           - List project files
+GET    /projects/{project_id}/files/{path}    - Get file content
+PUT    /projects/{project_id}/files/{path}    - Update file content
+DELETE /projects/{project_id}/files/{path}    - Delete file
+POST   /projects/{project_id}/sync            - Sync local changes to server
+POST   /projects/{project_id}/sync/status     - Get sync status
+```
+
+### **Agent Communication** (seems lower priority to me)
+```
+POST   /api/agents/{agent_name}/message       - Send message to specific agent
+GET    /api/agents/{agent_name}/state         - Get agent state
+POST   /api/agents/{agent_name}/interrupt     - Interrupt agent execution
+GET    /api/orchestration/status              - Get composer orchestration status
+POST   /api/orchestration/pause               - Pause orchestration
+POST   /api/orchestration/resume              - Resume orchestration
+```
+
+### **WebSocket Endpoints** (for real-time updates) (seems lower priority to me)
+```
+WS     /ws/projects/{project_id}              - Real-time project updates
+WS     /ws/agents/{agent_name}/logs           - Stream agent logs
+WS     /ws/tasks/{task_id}/progress           - Task progress streaming
+WS     /ws/heartbeat/monitor                  - Real-time heartbeat monitoring
+```
+
+### **Admin Endpoints** (seems lower priority to me)
+```
+GET    /admin/users            - List all users (admin only)
+PUT    /admin/users/{user_id}/role - Update user role
+GET    /admin/system/status     - System health and status
+POST   /admin/system/backup     - Trigger system backup
+POST   /admin/system/restore    - Restore from backup
+GET    /admin/audit-logs        - View audit logs
+```
+
+### **Version Control Endpoints** (addressing your concern)
+```
+GET    /projects/{project_id}/vc/status       - Git status
+POST   /projects/{project_id}/vc/commit       - Create commit with message
+GET    /projects/{project_id}/vc/history      - Get commit history
+POST   /projects/{project_id}/vc/branch       - Create/switch branch
+GET    /projects/{project_id}/vc/diff/{commit} - View changes
+POST   /projects/{project_id}/vc/sync         - Push/pull from remote
+GET    /projects/{project_id}/vc/conflicts    - List merge conflicts
+POST   /projects/{project_id}/vc/resolve      - Resolve conflicts
+```
+
+## Suggested Database Schema (SQLAlchemy Models)
+
+```python
+# Quick schema outline
+- User (id, username, email, hashed_password, created_at, is_active)
+- Project (id, user_id, name, description, created_at, updated_at, vc_repo_url)
+- Agent (id, project_id, name, config_json, heartbeat_interval, status)
+- Provider (id, user_id, provider_type, api_key_encrypted, config_json)
+- Task (id, project_id, agent_id, title, description, status, priority, created_at)
+- TaskHistory (id, task_id, action, details, timestamp)
+- Session (id, project_id, started_at, ended_at, status)
+- HeartbeatLog (id, agent_id, timestamp, status, metadata)
+- AuditLog (id, user_id, action, resource, timestamp, ip_address)
+```
+
+## Critical Design Decisions
+
+1. **API Key Security**: As noted, `sublimate-compose.yml` should NEVER contain keys. Instead, reference provider IDs and let the backend inject keys at runtime.
+2. **Version Control**: I'd suggest integrating Git programmatically via `python-gitlab` or `pygithub` for remotes, with local Git repositories managed per project. Each project gets a dedicated repo.
+3. **Database Flexibility**: SQLAlchemy with SQLite for dev, PostgreSQL for production. Include Alembic for migrations.
+4. **API Versioning**: Use `/api/v1/` prefix to allow future breaking changes.
+5. **Rate Limiting**: Implement per-user/per-endpoint rate limiting using `slowapi` or similar.
+
+## Addendum
+Scope creep!!! But we _do_ want it to be rather functional. If we write lots of tests, we can _more_ confidently... _vibecode_ some.. or large parts... of it... 
+i'm going to be sick
+
+
 # Some code examples and wall of rambles.
 so i guess instead of storing it in the db, we just store agents in the project_root & agent_root i guess.. not sure why deepseek said that agent_states should go in docs/ though - seems iffy to me. maybe i could move agent_states to agents/ ?
 
