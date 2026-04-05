@@ -34,6 +34,14 @@ An automated code management system. Using Sublimate, unlike other AI assisted d
 | Sqlite/Postgres | Database management, early on we'll use Sqlite for testing and initial prototypes, planning to migrate to postgres |
 | Jinja2Templates/React | Frontend (webui) Jinja2Templates for initial prototypes, eventually planning for React |
 
+# Documentation
+
+Comprehensive documentation is available for key components:
+
+- [Composer System](docs/composer.md): Detailed guide to agent orchestration, configuration, and usage
+- [Agent Templates](agent_templates/default/): Example configurations and prompts
+- [Testing](tests/): Test suite with mocking strategies
+
 # This project is in development
 
 This project is in development
