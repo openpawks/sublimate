@@ -20,8 +20,8 @@ POST   /users/me/change-password - Change password
 - ProjectComposeResponse
 also should have project schema examples and validation
 
-| METHODS | ROUTE | PURPOSE | COMPLETED? | SCHEMA |
-|-|-|-|------------|-|
+| METHODS | ROUTE | PURPOSE | COMPLETED? |
+|-|-|-|-|
 | GET, POST | /projects | GET lists all projects for user, POST creates a project | YES,YES    |
 | PATCH, PUT, DELETE | /projects/{project_id} |  Update and delete project, we should make it manage the sublimate-compose.yml aswell as the db ) | SOME,,     |
 | GET, PUT | /projects/{project_id}/compose | GET compose file contents, PUT set compose file contents | N,         |
