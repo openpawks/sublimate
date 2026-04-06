@@ -6,6 +6,7 @@ import pytest
 import tempfile
 import os
 import subprocess
+import json
 from unittest.mock import patch, MagicMock
 
 from src.orchestration.tools import (
@@ -16,10 +17,16 @@ from src.orchestration.tools import (
     create_task,
     close_task,
     dangerously_run_commands,
+    insert_file_lines,
+    glob_files,
+    grep_files,
     get_all_tools,
     get_tools_by_names,
     write_file_tool,
     read_file_tool,
+    insert_file_lines_tool,
+    glob_files_tool,
+    grep_files_tool,
 )
 
 
@@ -186,6 +193,9 @@ class TestToolUtilities:
             "create_task",
             "close_task",
             "dangerously_run_commands",
+            "insert_file_lines",
+            "glob_files",
+            "grep_files",
         ]
 
         for tool_name in expected_tools:
@@ -213,6 +223,151 @@ class TestToolUtilities:
         assert "nonexistent_tool" not in tools
 
 
+class TestInsertFileLinesTool:
+    """Tests for insert_file_lines tool."""
+
+    def test_insert_file_lines_success(self):
+        """Test inserting lines at a specific line number."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            # Create initial content
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\nline3\n")
+
+            result = insert_file_lines(file_path, "inserted\n", 2)
+            assert "Successfully inserted" in result
+
+            with open(file_path, "r") as f:
+                lines = f.readlines()
+            assert lines == ["line1\n", "inserted\n", "line2\n", "line3\n"]
+
+    def test_insert_file_lines_append(self):
+        """Test inserting beyond total lines (append)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\n")
+
+            result = insert_file_lines(file_path, "line2\n", 10)
+            assert "Successfully inserted" in result
+
+            with open(file_path, "r") as f:
+                lines = f.readlines()
+            assert lines == ["line1\n", "line2\n"]
+
+    def test_insert_file_lines_prepend(self):
+        """Test inserting at line 1 (prepend)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("original\n")
+
+            result = insert_file_lines(file_path, "new first line\n", 1)
+            assert "Successfully inserted" in result
+
+            with open(file_path, "r") as f:
+                lines = f.readlines()
+            assert lines == ["new first line\n", "original\n"]
+
+    def test_insert_file_lines_file_not_found(self):
+        """Test inserting into a non-existent file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "nonexistent.txt")
+            result = insert_file_lines(file_path, "content", 1)
+            assert "File not found" in result
+
+
+class TestGlobFilesTool:
+    """Tests for glob_files tool."""
+
+    def test_glob_files_success(self):
+        """Test globbing with matches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create some files
+            open(os.path.join(tmpdir, "foo.txt"), "w").close()
+            open(os.path.join(tmpdir, "bar.txt"), "w").close()
+            open(os.path.join(tmpdir, "baz.py"), "w").close()
+
+            result = glob_files("*.txt", path=tmpdir)
+            matches = json.loads(result)
+            # Should contain foo.txt and bar.txt (absolute paths)
+            assert len(matches) == 2
+            filenames = [os.path.basename(p) for p in matches]
+            assert "foo.txt" in filenames
+            assert "bar.txt" in filenames
+            assert "baz.py" not in filenames
+
+    def test_glob_files_no_matches(self):
+        """Test globbing with no matches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = glob_files("*.md", path=tmpdir)
+            matches = json.loads(result)
+            assert matches == []
+
+    def test_glob_files_recursive(self):
+        """Test globbing with recursive pattern."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subdir = os.path.join(tmpdir, "sub")
+            os.mkdir(subdir)
+            open(os.path.join(subdir, "file.txt"), "w").close()
+
+            result = glob_files("**/*.txt", path=tmpdir)
+            matches = json.loads(result)
+            assert len(matches) == 1
+            assert matches[0].endswith("sub/file.txt")
+
+
+class TestGrepFilesTool:
+    """Tests for grep_files tool."""
+
+    def test_grep_files_success(self):
+        """Test grepping with matches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("hello world\nfoo bar\nhello again\n")
+
+            result = grep_files("hello", path=tmpdir)
+            matches = json.loads(result)
+            assert len(matches) == 2
+            for match in matches:
+                assert match["file"] == file_path
+                assert "hello" in match["text"]
+
+    def test_grep_files_no_matches(self):
+        """Test grepping with no matches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("hello world\n")
+
+            result = grep_files("nonexistent", path=tmpdir)
+            matches = json.loads(result)
+            assert matches == []
+
+    def test_grep_files_with_include(self):
+        """Test grepping with file pattern inclusion."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            txt_file = os.path.join(tmpdir, "a.txt")
+            py_file = os.path.join(tmpdir, "b.py")
+            with open(txt_file, "w") as f:
+                f.write("target\n")
+            with open(py_file, "w") as f:
+                f.write("target\n")
+
+            result = grep_files("target", path=tmpdir, include="*.txt")
+            matches = json.loads(result)
+            assert len(matches) == 1
+            assert matches[0]["file"] == txt_file
+
+    def test_grep_files_path_not_found(self):
+        """Test grepping with non-existent path."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            nonexistent = os.path.join(tmpdir, "nonexistent")
+            result = grep_files("pattern", path=nonexistent)
+            assert "Path not found" in result
+
+
 class TestToolObjects:
     """Tests for LangChain tool objects."""
 
@@ -230,6 +385,27 @@ class TestToolObjects:
             assert callable(read_file_tool.run)
         else:
             assert callable(read_file_tool)
+
+    def test_insert_file_lines_tool_object(self):
+        """Test that insert_file_lines_tool is a LangChain tool object."""
+        if hasattr(insert_file_lines_tool, "run"):
+            assert callable(insert_file_lines_tool.run)
+        else:
+            assert callable(insert_file_lines_tool)
+
+    def test_glob_files_tool_object(self):
+        """Test that glob_files_tool is a LangChain tool object."""
+        if hasattr(glob_files_tool, "run"):
+            assert callable(glob_files_tool.run)
+        else:
+            assert callable(glob_files_tool)
+
+    def test_grep_files_tool_object(self):
+        """Test that grep_files_tool is a LangChain tool object."""
+        if hasattr(grep_files_tool, "run"):
+            assert callable(grep_files_tool.run)
+        else:
+            assert callable(grep_files_tool)
 
 
 if __name__ == "__main__":

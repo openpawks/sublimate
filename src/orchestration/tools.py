@@ -11,6 +11,8 @@ import subprocess
 import json
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime
+import glob
+import re
 
 # Try to import LangChain tools, but provide fallback for testing
 _HAS_LANGCHAIN = True
@@ -289,6 +291,129 @@ def dangerously_run_commands(command: str, timeout: int = 30) -> str:
         return f"Error running command: {str(e)}"
 
 
+def insert_file_lines(file_path: str, content: str, line_number: int) -> str:
+    """
+    Insert content at a specific line number in a file.
+
+    Args:
+        file_path: Path to the file
+        content: Content to insert
+        line_number: Line number to insert before (1-indexed). If line_number
+                     exceeds total lines, content is appended.
+
+    Returns:
+        Success message or error description
+    """
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return f"File not found: {file_path}"
+
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Convert line_number to 0-indexed
+        idx = line_number - 1
+        if idx < 0:
+            idx = 0
+        if idx > len(lines):
+            idx = len(lines)
+
+        # Split content into lines, preserving newline characters
+        new_lines = content.splitlines(keepends=True)
+        if not new_lines:
+            new_lines = [""]
+
+        # Insert or append
+        lines[idx:idx] = new_lines
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        return f"Successfully inserted content at line {line_number} in {file_path}"
+    except Exception as e:
+        return f"Error inserting content in {file_path}: {str(e)}"
+
+
+def glob_files(pattern: str, path: Optional[str] = None) -> str:
+    """
+    Find files matching a glob pattern.
+
+    Args:
+        pattern: Glob pattern to match
+        path: Optional directory to search in (defaults to current directory)
+
+    Returns:
+        JSON list of matched file paths or error message
+    """
+    try:
+        search_path = path if path else "."
+        # Use glob.glob with recursive pattern support
+        matches = glob.glob(pattern, root_dir=search_path, recursive=True)
+        # Convert to absolute paths
+        abs_matches = [str(Path(search_path) / m) for m in matches]
+        return json.dumps(abs_matches, indent=2)
+    except Exception as e:
+        return f"Error globbing pattern {pattern}: {str(e)}"
+
+
+def grep_files(
+    pattern: str, path: Optional[str] = None, include: Optional[str] = None
+) -> str:
+    """
+    Search for pattern in files.
+
+    Args:
+        pattern: Regex pattern to search for
+        path: Optional directory to search in (defaults to current directory)
+        include: Optional file pattern to include (e.g., "*.py")
+
+    Returns:
+        JSON list of matches with file, line number, and line text, or error message
+    """
+    try:
+        search_path = Path(path) if path else Path(".")
+        if not search_path.exists():
+            return f"Path not found: {search_path}"
+
+        # Compile regex
+        regex = re.compile(pattern)
+
+        # Determine which files to search
+        files_to_search = []
+        if include:
+            # Use glob to filter files by pattern
+            for file_path in search_path.rglob("*"):
+                if file_path.is_file() and file_path.match(include):
+                    files_to_search.append(file_path)
+        else:
+            # Search all files recursively
+            for file_path in search_path.rglob("*"):
+                if file_path.is_file():
+                    files_to_search.append(file_path)
+
+        matches = []
+        for file_path in files_to_search:
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    for line_num, line in enumerate(f, start=1):
+                        if regex.search(line):
+                            matches.append(
+                                {
+                                    "file": str(file_path),
+                                    "line": line_num,
+                                    "text": line.rstrip("\n"),
+                                }
+                            )
+            except (IOError, UnicodeDecodeError):
+                # Skip unreadable files
+                continue
+
+        return json.dumps(matches, indent=2)
+    except Exception as e:
+        return f"Error grepping pattern {pattern}: {str(e)}"
+
+
 # Create LangChain tool objects from the functions
 write_file_tool = _create_tool(write_file)
 read_file_tool = _create_tool(read_file)
@@ -300,6 +425,9 @@ dangerously_run_commands_tool = _create_tool(
     dangerously_run_commands,
     description="Run shell commands. WARNING: This is dangerous and should be used with caution.",
 )
+insert_file_lines_tool = _create_tool(insert_file_lines)
+glob_files_tool = _create_tool(glob_files)
+grep_files_tool = _create_tool(grep_files)
 
 
 # Utility function to get all tools as LangChain tool objects
@@ -318,6 +446,9 @@ def get_all_tools() -> Dict[str, Any]:
         "create_task": create_task_tool,
         "close_task": close_task_tool,
         "dangerously_run_commands": dangerously_run_commands_tool,
+        "insert_file_lines": insert_file_lines_tool,
+        "glob_files": glob_files_tool,
+        "grep_files": grep_files_tool,
     }
     return tools
 
@@ -346,6 +477,9 @@ __all__ = [
     "create_task",
     "close_task",
     "dangerously_run_commands",
+    "insert_file_lines",
+    "glob_files",
+    "grep_files",
     "write_file_tool",
     "read_file_tool",
     "create_agent_tool",
@@ -353,6 +487,9 @@ __all__ = [
     "create_task_tool",
     "close_task_tool",
     "dangerously_run_commands_tool",
+    "insert_file_lines_tool",
+    "glob_files_tool",
+    "grep_files_tool",
     "get_all_tools",
     "get_tools_by_names",
 ]
