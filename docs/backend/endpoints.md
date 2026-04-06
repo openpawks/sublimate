@@ -14,11 +14,11 @@ POST   /users/me/change-password - Change password
 ```
 
 ## Project management
-
 - ProjectCreate
 - ProjectResponse
 - ProjectComposeCreate
 - ProjectComposeResponse
+also should have project schema examples and validation
 
 | METHODS | ROUTE | PURPOSE | COMPLETED? | SCHEMA |
 |-|-|-|------------|-|
@@ -98,7 +98,7 @@ Ideally, API keys should be (password) encrypted. This may be a difficult task
 
 # THIS IS UNFINISHED, MANY POTENTIAL FEATURES ARE CURRENTLY NOT MARKED
 Unmarked as of yet
-- More monitoring metrics
+- More monitoring metrics like /health/agents /metrics and webhooks
 - File and configuration management /projects/{project_id}/files/{path}
 - Agent communication (low priority)
 - Websocket endpoints for realtime updates (low priority)
