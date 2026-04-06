@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+# USER MANAGEMENT
 class UserBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
     role: int
@@ -17,6 +18,12 @@ class UserResponse(UserBase):
     created_at: datetime
 
 
+# FILE
+class TextFileContents(BaseModel):
+    content: str
+
+
+# PROJECT MANAGEMENT
 class ProjectBase(BaseModel):
     # TODO: project name?
     root_dir: str
