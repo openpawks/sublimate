@@ -48,6 +48,7 @@ task
 ----
 id integer PK
 project_id integer FK >0- project.id
+todos string
 chat_id integer FK -0< chat.id
 created_at datetime
 
@@ -84,4 +85,3 @@ role integer
 # task (47, 117)
 # user (563, 281)
 # user_to_project (39, 294)
-

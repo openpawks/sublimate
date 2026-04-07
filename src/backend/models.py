@@ -92,6 +92,9 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    todos: Mapped[str] = mapped_column(
+        Text, nullable=True
+    )  # todos markdown format for agent long term memory
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id"), nullable=False, index=True
     )
