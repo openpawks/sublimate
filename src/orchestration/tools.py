@@ -131,6 +131,55 @@ def read_file(file_path: str) -> str:
         return f"Error reading {file_path}: {str(e)}"
 
 
+def read_file_lines(
+    file_path: str, start_line: int = 1, end_line: Optional[int] = None
+) -> str:
+    """
+    Read specific lines from a file.
+
+    Args:
+        file_path: Path to the file to read
+        start_line: First line to read (1-indexed, inclusive)
+        end_line: Last line to read (1-indexed, inclusive). If None, reads to end of file.
+
+    Returns:
+        Requested lines as a string, or error message
+    """
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return f"File not found: {file_path}"
+
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Validate line numbers
+        total_lines = len(lines)
+        if start_line < 1:
+            start_line = 1
+        if start_line > total_lines:
+            return f"Start line {start_line} exceeds file length ({total_lines} lines)"
+
+        if end_line is None:
+            end_line = total_lines
+        elif end_line < start_line:
+            # If end_line is less than start_line, swap them
+            start_line, end_line = end_line, start_line
+        if end_line > total_lines:
+            end_line = total_lines
+
+        # Convert to 0-indexed
+        start_idx = start_line - 1
+        end_idx = end_line  # exclusive slice
+        selected_lines = lines[start_idx:end_idx]
+
+        # Join lines, preserving original newlines
+        content = "".join(selected_lines)
+        return content
+    except Exception as e:
+        return f"Error reading lines from {file_path}: {str(e)}"
+
+
 def create_agent(
     name: str,
     agent_type: str = "coder",
@@ -417,6 +466,7 @@ def grep_files(
 # Create LangChain tool objects from the functions
 write_file_tool = _create_tool(write_file)
 read_file_tool = _create_tool(read_file)
+read_file_lines_tool = _create_tool(read_file_lines)
 create_agent_tool = _create_tool(create_agent)
 delete_agent_tool = _create_tool(delete_agent)
 create_task_tool = _create_tool(create_task)
@@ -441,6 +491,7 @@ def get_all_tools() -> Dict[str, Any]:
     tools = {
         "write_file": write_file_tool,
         "read_file": read_file_tool,
+        "read_file_lines": read_file_lines_tool,
         "create_agent": create_agent_tool,
         "delete_agent": delete_agent_tool,
         "create_task": create_task_tool,
@@ -472,6 +523,7 @@ def get_tools_by_names(tool_names: list) -> Dict[str, Any]:
 __all__ = [
     "write_file",
     "read_file",
+    "read_file_lines",
     "create_agent",
     "delete_agent",
     "create_task",
@@ -482,6 +534,7 @@ __all__ = [
     "grep_files",
     "write_file_tool",
     "read_file_tool",
+    "read_file_lines_tool",
     "create_agent_tool",
     "delete_agent_tool",
     "create_task_tool",

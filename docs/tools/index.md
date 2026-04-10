@@ -44,6 +44,26 @@ Read content from a file.
 content = read_file("/tmp/test.txt")
 ```
 
+### read_file_lines
+
+Read specific lines from a file.
+
+**Signature:** `read_file_lines(file_path: str, start_line: int = 1, end_line: Optional[int] = None) -> str`
+
+**Parameters:**
+- `file_path`: Path to the file to read
+- `start_line`: First line to read (1‑indexed, inclusive)
+- `end_line`: Last line to read (1‑indexed, inclusive). If `None`, reads to end of file.
+
+**Returns:**
+- Requested lines as a string, or error message
+- Error message: `"File not found: <file_path>"`, `"Start line <start_line> exceeds file length (<total_lines> lines)"`, or `"Error reading lines from <file_path>: <error>"`
+
+**Example:**
+```python
+lines = read_file_lines("/tmp/test.txt", 2, 4)  # lines 2, 3, 4
+```
+
 ### insert_file_lines
 
 Insert content at a specific line number in a file.

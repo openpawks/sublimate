@@ -12,6 +12,7 @@ from unittest.mock import patch, MagicMock
 from src.orchestration.tools import (
     write_file,
     read_file,
+    read_file_lines,
     create_agent,
     delete_agent,
     create_task,
@@ -24,6 +25,7 @@ from src.orchestration.tools import (
     get_tools_by_names,
     write_file_tool,
     read_file_tool,
+    read_file_lines_tool,
     insert_file_lines_tool,
     glob_files_tool,
     grep_files_tool,
@@ -87,6 +89,88 @@ class TestReadFileTool:
             file_path = os.path.join(tmpdir, "nonexistent.txt")
             result = read_file(file_path)
 
+            assert "File not found" in result
+
+
+class TestReadFileLinesTool:
+    """Tests for read_file_lines tool."""
+
+    def test_read_file_lines_success(self):
+        """Test reading specific lines from a file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\nline3\nline4\nline5\n")
+
+            result = read_file_lines(file_path, 2, 4)
+            assert result == "line2\nline3\nline4\n"
+
+    def test_read_file_lines_start_only(self):
+        """Test reading from start line to end of file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\nline3\n")
+
+            result = read_file_lines(file_path, 2)
+            assert result == "line2\nline3\n"
+
+    def test_read_file_lines_single_line(self):
+        """Test reading a single line."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\nline3\n")
+
+            result = read_file_lines(file_path, 2, 2)
+            assert result == "line2\n"
+
+    def test_read_file_lines_start_beyond_length(self):
+        """Test reading with start line exceeding file length."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\n")
+
+            result = read_file_lines(file_path, 5)
+            assert "exceeds file length" in result
+
+    def test_read_file_lines_end_beyond_length(self):
+        """Test reading with end line beyond file length (clamped)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\n")
+
+            result = read_file_lines(file_path, 1, 10)
+            assert result == "line1\nline2\n"
+
+    def test_read_file_lines_start_end_swapped(self):
+        """Test reading when start > end (should swap)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\nline2\nline3\n")
+
+            result = read_file_lines(file_path, 3, 1)
+            assert result == "line1\nline2\nline3\n"
+
+    def test_read_file_lines_invalid_start(self):
+        """Test reading with invalid start line (negative)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "test.txt")
+            with open(file_path, "w") as f:
+                f.write("line1\n")
+
+            result = read_file_lines(file_path, -1, 5)
+            # Should clamp start to 1
+            assert result == "line1\n"
+
+    def test_read_file_lines_file_not_found(self):
+        """Test reading lines from a non-existent file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "nonexistent.txt")
+            result = read_file_lines(file_path, 1, 5)
             assert "File not found" in result
 
 
@@ -188,6 +272,7 @@ class TestToolUtilities:
         expected_tools = [
             "write_file",
             "read_file",
+            "read_file_lines",
             "create_agent",
             "delete_agent",
             "create_task",
@@ -385,6 +470,13 @@ class TestToolObjects:
             assert callable(read_file_tool.run)
         else:
             assert callable(read_file_tool)
+
+    def test_read_file_lines_tool_object(self):
+        """Test that read_file_lines_tool is a LangChain tool object."""
+        if hasattr(read_file_lines_tool, "run"):
+            assert callable(read_file_lines_tool.run)
+        else:
+            assert callable(read_file_lines_tool)
 
     def test_insert_file_lines_tool_object(self):
         """Test that insert_file_lines_tool is a LangChain tool object."""
