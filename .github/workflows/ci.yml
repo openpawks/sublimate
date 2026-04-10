@@ -1,0 +1,186 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  # Pre-commit hooks job
+  pre-commit:
+    name: Run Pre-commit Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv (fast pip replacement)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system pre-commit
+          uv pip install --system pytest  # For the custom test hook
+
+      - name: Run pre-commit hooks on all files
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run pre-commit on changed files
+        if: github.event_name == 'pull_request'
+        run: pre-commit run --from-ref origin/${{ github.base_ref }} --to-ref HEAD
+
+  # Ruff specific job (Python linting)
+  ruff-check:
+    name: Ruff Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Ruff linter
+        uses: astral-sh/ruff-action@v1
+        with:
+          args: check --exit-non-zero-on-fix
+
+      - name: Run Ruff formatter
+        uses: astral-sh/ruff-action@v1
+        with:
+          args: format --check
+
+  # Gitleaks secret detection
+#  gitleaks:
+#    name: Secret Detection
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Run Gitleaks
+#        uses: gitleaks/gitleaks-action@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          args: --verbose --redact
+
+  # ShellCheck
+  shellcheck:
+    name: Shell Script Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+
+  # ESLint for JavaScript/TypeScript
+#  eslint:
+#    name: ESLint Check
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '20'
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install -g eslint@8.57.0
+#          npm install eslint-config-airbnb-base@15.0.0 eslint-plugin-import@2.29.1
+#
+#      - name: Run ESLint
+#        run: |
+#          eslint . --ext .js,.jsx,.ts,.tsx --fix || true
+#          eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0
+#        continue-on-error: false
+
+  # Python Tests
+  pytest:
+    name: Run Python Tests
+    runs-on: ubuntu-latest
+    needs: [pre-commit, ruff-check]  # Only run if pre-commit passes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv pip install --system pytest
+
+      - name: Run tests
+        run: uv run pytest -v
+
+  # Security scanning (optional but recommended)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Build (if applicable)
+#  build:
+#    name: Build Application
+#    runs-on: ubuntu-latest
+#    needs: [pytest, eslint, shellcheck, gitleaks]
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Build Docker image (example)
+#        run: |
+#          docker build -t myapp:${{ github.sha }} .
+#          echo "Build completed successfully"
+
+#  # Deployment (optional)
+#  deploy:
+#    name: Deploy to Production
+#    runs-on: ubuntu-latest
+#    needs: [build]
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    environment: production
+#    concurrency: production
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Deploy to server
+#        run: |
+#          echo "Deploying to production..."
+#          # Add your deployment commands here
+#          # Example: rsync, kubectl, terraform, etc.
+#        env:
+#          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
