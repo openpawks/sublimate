@@ -258,7 +258,12 @@ class BaseComposer:
             if not tool:
                 continue
             # Wrap file-related tools
-            if tool_name in ("read_file", "write_file"):
+            if tool_name in (
+                "insert_file_lines",
+                "read_file_lines",
+                "read_file",
+                "write_file",
+            ):
                 if tool_name == "read_file":
 
                     def wrapped_read_file(file_path: str) -> str:

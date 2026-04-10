@@ -420,6 +420,7 @@ def grep_files(
     Returns:
         JSON list of matches with file, line number, and line text, or error message
     """
+    # TODO: grep files only that agent has permissions on
     try:
         search_path = Path(path) if path else Path(".")
         if not search_path.exists():
