@@ -85,3 +85,17 @@ class HeartbeatBase(BaseModel):
     cron: str
     dependencies: list[str]
     content: str
+
+
+
+
+class AgentCreate(BaseModel):
+    pass
+
+class AgentUpdate(BaseModel):
+    pass 
+
+class AgentResponse(BaseModel):
+    pass 
+
+
