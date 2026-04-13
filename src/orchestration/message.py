@@ -10,6 +10,7 @@ class BaseMessage:
         self.role = role
         self.content = content
         self.userid = userid
+        self.username = username
         # TODO: verify that this should be time, or datetime. I think
         # datetime but I'm leaving that task for someone else
         self.created_at = time.time()

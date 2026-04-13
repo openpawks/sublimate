@@ -2,7 +2,7 @@ from src.orchestration.message import BaseMessage
 
 
 class BaseChat:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # so at least with deepseek, it looks like
         # they cache automatically, so we don't have to worry about that
         # for now.

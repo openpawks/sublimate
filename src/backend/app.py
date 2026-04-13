@@ -1,15 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI
 
 from database import engine, Base
 
-from routers import (
-    users, 
-    projects,
-    auth,
-    providers
-)
+from routers import users, projects, auth, providers
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,7 +24,7 @@ app.include_router(projects.router, prefix="api/projects/", tags=["projects"])
 app.include_router(auth.router, prefix="api/auth/", tags=["auth"])
 app.include_router(providers.router, prefix="api/providers/", tags=["providers"])
 
+
 @app.get("/")
 def hello():
     return {"message": "Hello World"}
-

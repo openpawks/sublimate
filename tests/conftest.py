@@ -2,33 +2,41 @@ import pytest
 import sys
 import tempfile
 from pathlib import Path
-import os 
+import os
 
 from unittest.mock import patch, MagicMock
 
-@pytest.fixture 
+
+@pytest.fixture
 def tmpdir():
     """Create a temporary directory that works on Windows."""
     if sys.platform == "win32":
         import time
+
         # TODO: make this better
         base_path = Path(os.getcwd()) / "tmp"
         base_path.mkdir(exist_ok=True)
-        temp_path = base_path / f"pytest_test_{os.getpid()}_{str(time.time()).replace('.', '_')}"
+        temp_path = (
+            base_path
+            / f"pytest_test_{os.getpid()}_{str(time.time()).replace('.', '_')}"
+        )
         temp_path.mkdir(exist_ok=True)
         yield temp_path
         # Clean up - retry a few times on Windows due to file locking
         for _ in range(5):
             try:
                 import shutil
+
                 shutil.rmtree(temp_path, ignore_errors=True)
                 break
             except (PermissionError, OSError):
                 import time
+
                 time.sleep(0.1)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield temp_dir
+
 
 @pytest.fixture(autouse=True)
 def mock_invokes():

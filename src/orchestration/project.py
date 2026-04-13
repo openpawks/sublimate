@@ -18,7 +18,7 @@ class BaseProject:
         )
 
     def new_task_id(self):
-        return max(list(self.tasks.keys()) or 0) + 1
+        return max(list(self.tasks.keys()) or [0]) + 1
 
     def get_task_by_id(self, id):
         return self.tasks.get(id, None)

@@ -87,15 +87,13 @@ class HeartbeatBase(BaseModel):
     content: str
 
 
-
-
 class AgentCreate(BaseModel):
     pass
 
+
 class AgentUpdate(BaseModel):
-    pass 
+    pass
+
 
 class AgentResponse(BaseModel):
-    pass 
-
-
+    pass
