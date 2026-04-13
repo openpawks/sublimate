@@ -107,9 +107,13 @@ class BaseComposer:
         elif callable(tool) and hasattr(tool, "__name__"):
             tool_name = tool.__name__
 
-        if tool_name in ("read_file", "write_file"):
+        if tool_name in (
+            "read_file_lines" "insert_file_lines",
+            "read_file",
+            "write_file",
+        ):
             # Create a wrapper function that calls agent_obj.check_file_access
-            if tool_name == "read_file":
+            if tool_name in ["read_file", "read_file_lines"]:
 
                 def wrapped_read_file(file_path: str) -> str:
                     if not agent_obj.check_file_access(file_path, mode="read"):
@@ -124,12 +128,12 @@ class BaseComposer:
                 if _create_tool is not None:
                     return _create_tool(
                         wrapped_read_file,
-                        name="read_file",
-                        description="Read a file with permission checks",
+                        name=tool_name,
+                        description=tool.description,  # "Read a file with permission checks",
                     )
                 else:
                     return wrapped_read_file
-            elif tool_name == "write_file":
+            elif tool_name in ["write_file", "insert_file_lines"]:
 
                 def wrapped_write_file(
                     file_path: str, content: str, append: bool = False
@@ -144,8 +148,8 @@ class BaseComposer:
                 if _create_tool is not None:
                     return _create_tool(
                         wrapped_write_file,
-                        name="write_file",
-                        description="Write to a file with permission checks",
+                        name=tool_name,
+                        description=tool.description,  # "Write to a file with permission checks",
                     )
                 else:
                     return wrapped_write_file

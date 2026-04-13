@@ -15,6 +15,8 @@ from .agent import BaseAgent
 
 from .heartbeat import Heartbeat
 
+from .task import BaseTask
+
 from .tools import (
     write_file,
     read_file,
