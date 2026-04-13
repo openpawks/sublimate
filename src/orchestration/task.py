@@ -6,6 +6,7 @@ class BaseTask:
         self.project = project
         self.chat = chat
         self.todos = ""
+        self.open = True
 
         self.agents = {}
 
@@ -39,6 +40,13 @@ class BaseTask:
 
     def get_messages(self, *args, **kwargs):
         return self.chat.get_messages(*args, **kwargs)
+
+    def close(self):
+        self.open = False
+        return
+
+    def is_open(self):
+        return self.open
 
 
 def create_task(project, messages, chat=BaseChat):

@@ -262,6 +262,7 @@ def create_task(
     Returns:
         Task ID or error description
     """
+    # TODO: mould this to the new BaseTask object and such
     try:
         if tags is None:
             tags = []
@@ -300,6 +301,7 @@ def close_task(task_id: str, notes: str = "") -> str:
     Returns:
         Success message or error description
     """
+    # TODO: project.get_task(id:int).open = False something like that
     try:
         # In a real implementation, this would update a database
         return f"Task {task_id} closed. Notes: {notes}"
