@@ -27,5 +27,11 @@ class BaseChat:
             for x in self.messages
         ]  # copy.deepcopy(self.messages)
 
+    def was_created_at(self):
+        return self.messages[0].created_at
+
+    def was_last_updated_at(self):
+        return self.messages[-1].created_at
+
     def add_message(self, *args, **kwargs):
         return self.messages.append(BaseMessage(*args, **kwargs))

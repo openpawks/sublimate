@@ -47,6 +47,7 @@ message_id integer PK FK - message.id
 task
 ----
 id integer PK
+name string
 project_id integer FK >0- project.id
 todos string
 chat_id integer FK -0< chat.id

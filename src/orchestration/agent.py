@@ -5,7 +5,8 @@ from pathlib import Path
 
 import os
 import glob
-import json
+
+import copy
 
 
 # base agent
@@ -76,7 +77,29 @@ class BaseAgent:
         self.dependencies = set({})
         self.get_chat_history = lambda x: []
 
-        self.agent = create_agent(model=self.model, tools=tools)
+        self.tools = tools
+        self.agent = None
+        self.task = None
+
+    def init(self, tools=[]):
+        self.agent = create_agent(
+            model=self.model,
+            tools=self.task and [*self.task.task_tools, *self.tools] or self.tools,
+        )
+
+    def clone_agent(self):
+        """
+        Create clone of agent, with specific tools for a given task
+        Needed to give task specific tools, like create, edit and read todos etc
+
+        However, in future different tasks may want different permissions than what the agent has,
+        so this may be expanded in future.
+        """
+        return copy.deepcopy(self)  # does this have to be a deep copy?
+
+    def task_agent(self, task_obj):
+        self.task = task_obj
+        return self
 
     def add_dependency(self, agent):
         return self.dependencies.add(agent)
@@ -244,7 +267,7 @@ class BaseAgent:
 
     def get_task_context_as_messages(self, task):
         # TODO: have to write this. Anyone can write this.
-        return task.get_messages()
+        return self.task.get_messages()
 
     def format_message_history(
         self,
@@ -339,10 +362,11 @@ class BaseAgent:
         state_file = states_dir / f"{self.name}_{timestamp}.md"
 
         # Convert output to string if not already
-        if isinstance(output, dict):
-            output_str = json.dumps(output, indent=2, default=str)
-        else:
-            output_str = str(output)
+        # if isinstance(output, dict):
+        #     output_str = json.dumps(output, indent=2, default=str)
+        # else:
+        #    output_str = str(output)
+        output_str = output.content
 
         with open(state_file, "w", encoding="utf-8") as f:
             f.write(f"# Agent Run: {self.name}\n")

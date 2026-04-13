@@ -2,7 +2,7 @@ import time
 
 
 class BaseMessage:
-    def __init__(self, role, content, userid=0):
+    def __init__(self, role, content, userid=0, username=""):
         # NOTE: role is mostly temporary, we should dynamically set roles based on
         # each agent, so that they see every other agent's messages as from a "user"
         # atm, this is _mostly_ temporary, but this is good to differentiate from
