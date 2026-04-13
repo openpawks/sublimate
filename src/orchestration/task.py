@@ -1,4 +1,5 @@
 from src.orchestration.chat import BaseChat
+from src.orchestration.tools import _create_tool
 
 
 class BaseTask:
@@ -21,9 +22,6 @@ class BaseTask:
             self.edit_todos,
             self.close_task,
             self.request_human_approval,
-            # next agent
-            # set active agents
-            # list agents
         ]
 
         if len(self.agents) > 1:
@@ -34,6 +32,9 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
+        # wrap so they're callable by langchain... hopefully.
+        self.task_tools = [_create_tool(x) for x in self.task_tools]
+
         # reinit all agents
         for agent in self.agents.values():
             agent.init()
@@ -41,10 +42,11 @@ class BaseTask:
     # TASK SPECIFIC TOOLS
     def read_todos(self):
         """Read todo list"""
-        return
+        return self.todos
 
     def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
+        self.todos = todos
         return
 
     def close_task(self):

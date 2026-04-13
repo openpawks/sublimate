@@ -77,7 +77,7 @@ class TestBaseTask:
 
         result = task.read_todos()
 
-        assert result is None
+        assert result is task.todos
 
     def test_edit_todos(self):
         """Test edit_todos returns None (placeholder)."""
