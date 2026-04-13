@@ -39,6 +39,9 @@ class BaseAgent:
         agent_home,
         model,
         tools=[],
+        # NOTE: I don't know if we should keep this as root_folder, or if
+        # it should be dependent on some sort of project object.
+        # i think that would be better.
         root_folder="",
         file_access=None,
         read_only_file_access=None,
@@ -234,13 +237,14 @@ class BaseAgent:
                 ),
             ),
         )
-    def decide_which_task_to_do(self, max:int=1):
-        # TODO: unsure of how we will do this as of yet
-        return 
 
-    def get_task_context_as_messages(self):
+    def decide_which_task_to_do(self, max: int = 1):
+        # TODO: unsure of how we will do this as of yet
+        return
+
+    def get_task_context_as_messages(self, task):
         # TODO: have to write this. Anyone can write this.
-        return []
+        return task.get_messages()
 
     def format_message_history(
         self,
