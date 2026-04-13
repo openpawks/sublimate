@@ -1,3 +1,6 @@
+from src.orchestration.chat import BaseChat
+
+
 class BaseTask:
     def __init__(self, project, chat):
         self.project = project
@@ -33,3 +36,10 @@ class BaseTask:
     def invoke_agent(self, name):
         agent = self.get_agent(name)
         agent.invoke(self.chat.get_messages())
+
+    def get_messages(self, *args, **kwargs):
+        return self.chat.get_messages(*args, **kwargs)
+
+
+def create_task(project, messages, chat=BaseChat):
+    return BaseTask(project, chat.from_messages(messages))

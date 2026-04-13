@@ -29,14 +29,14 @@ class BaseComposer:
     Server doesn't need to interact with this directly, just can manage the config files for the agents and composer.
     """
 
-    def __init__(self, agent_home, tools: dict, root_folder=""):
+    def __init__(self, agent_home, tools: dict, root_dir="", project=None):
         self.agent_home = (
             isinstance(agent_home, Path) and agent_home or Path(agent_home)
         )
 
-        self.root_folder = (
-            root_folder
-            and (isinstance(root_folder, Path) and root_folder or Path(root_folder))
+        self.root_dir = (
+            root_dir
+            and (isinstance(root_dir, Path) and root_dir or Path(root_dir))
             or self.agent_home / ".."
         ).resolve()
 
@@ -44,6 +44,8 @@ class BaseComposer:
         self.models = {}
 
         self.tools = tools
+        self.project = project
+
         filepath = self.agent_home / "sublimate-compose.yml"
         if os.path.exists(filepath):
             with open(filepath) as f:
@@ -170,7 +172,7 @@ class BaseComposer:
         deny_file_access = agent_data.get("deny_file_access", [])
 
         # Create permission checker closure
-        root_folder = self.root_folder
+        root_dir = self.root_dir
 
         def check_file_access(file_path, mode="read"):
             """Check file access using the agent's patterns."""
@@ -179,7 +181,7 @@ class BaseComposer:
             path = Path(file_path)
             if path.is_absolute():
                 try:
-                    relative = path.relative_to(root_folder)
+                    relative = path.relative_to(root_dir)
                 except ValueError:
                     return False
             else:
@@ -365,7 +367,7 @@ class BaseComposer:
                 agent_data.get("model", agent_data.get("model_name", "default"))
             ],
             wrapped_tools,
-            str(self.root_folder),
+            str(self.root_dir),
             file_access=file_access,
             read_only_file_access=read_only_file_access,
             deny_file_access=deny_file_access,
@@ -413,6 +415,9 @@ class BaseComposer:
 
     def get_agent_names(self):
         return list(self.data.get("agents").keys())
+
+    def get_project(self):
+        return self.project
 
     def up(self):
         # TODO: oh god
