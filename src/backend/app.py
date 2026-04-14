@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 
 from database import engine, Base
 
@@ -28,3 +28,8 @@ app.include_router(providers.router, prefix="api/providers/", tags=["providers"]
 @app.get("/")
 def hello():
     return {"message": "Hello World"}
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request, exc):
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
