@@ -1,4 +1,5 @@
 from src.orchestration.chat import BaseChat
+from src.orchestration.tools import _create_tool
 
 
 class BaseTask:
@@ -21,9 +22,6 @@ class BaseTask:
             self.edit_todos,
             self.close_task,
             self.request_human_approval,
-            # next agent
-            # set active agents
-            # list agents
         ]
 
         if len(self.agents) > 1:
@@ -34,6 +32,9 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
+        # wrap so they're callable by langchain... hopefully.
+        self.task_tools = [_create_tool(x) for x in self.task_tools]
+
         # reinit all agents
         for agent in self.agents.values():
             agent.init()
@@ -41,10 +42,11 @@ class BaseTask:
     # TASK SPECIFIC TOOLS
     def read_todos(self):
         """Read todo list"""
-        return
+        return self.todos
 
     def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
+        self.todos = todos
         return
 
     def close_task(self):
@@ -61,19 +63,31 @@ class BaseTask:
 
     def next_agent(self):
         """Cycle the conversation to the next agent"""
+        if not self.active_agent_name or self.active_agent_name not in self.agents:
+            # No active agent, set to first agent if any
+            if self.agents:
+                self.set_active_agent(list(self.agents.keys())[0])
+                return "Success"
+            else:
+                return "No agents available"
+
         keys = list(self.agents.keys())
-        next_index = keys.index(self.active_agent_name) + 1
-        self.set_active_agent(next_index < len(keys) and next_index or keys[0])
+        current_index = keys.index(self.active_agent_name)
+        next_index = current_index + 1
+        if next_index < len(keys):
+            self.set_active_agent(keys[next_index])
+        else:
+            self.set_active_agent(keys[0])  # wrap around
         return "Success"
 
     def set_active_agent(self, name: str):
         """Allow another worker to work on this, should use for todos where another agent is likely more suitable."""
         if name in self.agents.keys():
-            self.active_agent_name = ""
+            self.active_agent_name = name
         else:
-            return f"Agent '{name}' does not exist. The current agents assigned are\n{self.list_agents}"
+            return f"Agent '{name}' does not exist. The current agents assigned are\n{self.list_agents_as_text(name)}"
 
-    def list_agents_as_text(self, name: str):
+    def list_agents_as_text(self, name: str = ""):
         """List agents in chat."""
         return "\n".join(list(self.agents.keys()))
 
@@ -81,16 +95,14 @@ class BaseTask:
         return self.agents.get(name, None)
 
     def get_active_agent(self):
-        agent_name = (
-            self.active_agent_name
-            or len(self.agents.keys())
-            and self.agents.keys()[0]
-            or None
-        )
-        if agent_name:
-            return self.agents.get(agent_name)
+        if self.active_agent_name:
+            agent_name = self.active_agent_name
+        elif self.agents:
+            agent_name = list(self.agents.keys())[0]
         else:
             raise ValueError("No agents set!")
+
+        return self.agents.get(agent_name)
 
     def resign_agent(self, agent_name: str):
         if self.get_agent(agent_name):
@@ -124,20 +136,34 @@ class BaseTask:
         return self.chat.was_created_at()
 
     def was_last_updated_at(self):
-        return self.chat.was_last_updated_at(self)
+        return self.chat.was_last_updated_at()
 
     def close(self):
         self.open = False
 
-    def repeat_until_complete(self):
+    async def repeat_until_complete(self, max_iterations=100):
         self.repeating_until_complete = True
+        iteration = 0
 
-        while self.repeating_until_complete and self.open:
-            output = self.get_active_agent.run()
+        while (
+            self.repeating_until_complete and self.open and iteration < max_iterations
+        ):
+            agent = self.get_active_agent()
+            output = await agent.run()
             self.chat.add_message(
                 role="assistant",
                 content=output.content,
                 username=self.active_agent_name,
+            )
+            iteration += 1
+
+        if iteration >= max_iterations:
+            # Safety: stop repeating if we hit max iterations
+            self.repeating_until_complete = False
+            self.chat.add_message(
+                role="system",
+                content=f"Stopped after {max_iterations} iterations (safety limit).",
+                username="system",
             )
 
         return

@@ -4,7 +4,6 @@ Tests for file access permissions.
 
 import pytest
 from pathlib import Path
-import tempfile
 
 from src.orchestration.composer import BaseAgent
 from langchain.chat_models import init_chat_model

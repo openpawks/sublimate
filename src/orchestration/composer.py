@@ -110,7 +110,7 @@ class BaseComposer:
             tool_name = tool.__name__
 
         if tool_name in (
-            "read_file_lines" "insert_file_lines",
+            "read_file_linesinsert_file_lines",
             "read_file",
             "write_file",
         ):

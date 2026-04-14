@@ -3,7 +3,6 @@ Integration tests for file access controls with composer.
 """
 
 import pytest
-import tempfile
 import yaml
 from pathlib import Path
 

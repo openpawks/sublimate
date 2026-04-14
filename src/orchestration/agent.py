@@ -167,13 +167,44 @@ class BaseAgent:
 
         return False
 
+    def _match_component(self, component, pattern):
+        """
+        Match a single path component against a pattern component.
+        Supports * (1+ characters) and ? (single character).
+        """
+        i = j = 0
+        while i < len(pattern) and j < len(component):
+            if pattern[i] == "*":
+                # Match 1 or more characters
+                # Try all possible lengths
+                for k in range(j, len(component) + 1):
+                    if k == j:
+                        continue  # need at least one character
+                    if self._match_component(component[k:], pattern[i + 1 :]):
+                        return True
+                return False
+            elif pattern[i] == "?":
+                # Match exactly one character
+                j += 1
+                i += 1
+            else:
+                if pattern[i] != component[j]:
+                    return False
+                i += 1
+                j += 1
+        # After processing pattern, ensure both consumed
+        while i < len(pattern) and pattern[i] == "*":
+            # Trailing * must match at least one character, but we have no more component
+            # This means pattern expects more characters, so no match
+            return False
+        return i == len(pattern) and j == len(component)
+
     def _match_pattern(self, path_str, pattern):
         """
         Match a path string against a glob pattern respecting directory boundaries.
         Supports * (any characters except /), ? (single character except /), and **
         (zero or more directories).
         """
-        import fnmatch
 
         # Normalize slashes
         path_str = path_str.replace("\\", "/")
@@ -207,7 +238,7 @@ class BaseAgent:
                     ):
                         return True
                 return False
-            if not fnmatch.fnmatch(path_parts[j], pattern_parts[i]):
+            if not self._match_component(path_parts[j], pattern_parts[i]):
                 return False
             i += 1
             j += 1
@@ -265,9 +296,12 @@ class BaseAgent:
         # TODO: unsure of how we will do this as of yet
         return
 
-    def get_task_context_as_messages(self, task):
+    def get_task_context_as_messages(self, task=None):
         # TODO: have to write this. Anyone can write this.
-        return self.task.get_messages()
+        task = task or self.task
+        if task is None:
+            return []
+        return task.get_messages()
 
     def format_message_history(
         self,

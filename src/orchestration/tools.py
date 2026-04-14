@@ -74,11 +74,33 @@ def _create_tool(
     if "\n" in tool_description:
         tool_description = tool_description.split("\n")[0]
 
-    return StructuredTool.from_function(
-        func=func,
-        name=tool_name,
-        description=tool_description,
-    )
+    # Handle methods with self parameter by creating a wrapper
+    import inspect
+
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+
+    if params and params[0].name == "self":
+        # This is a method, create a wrapper that ignores self
+        def wrapper(*args, **kwargs):
+            # Skip the first argument (self) when calling the original function
+            return func(*args, **kwargs)
+
+        # Copy the function name and docstring to the wrapper
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+
+        return StructuredTool.from_function(
+            func=wrapper,
+            name=tool_name,
+            description=tool_description,
+        )
+    else:
+        return StructuredTool.from_function(
+            func=func,
+            name=tool_name,
+            description=tool_description,
+        )
 
 
 def write_file(file_path: str, content: str, append: bool = False) -> str:
