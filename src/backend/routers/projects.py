@@ -15,11 +15,14 @@ from schemas import (
 )
 from database import get_db
 
-from services import ProjectService
+from dependencies.services import get_project_service, get_task_service
+from services.project_service import ProjectService
+from services.task_service import TaskService
 
 router = APIRouter()
 
 
+# helper dependency
 async def get_project_or_404(
     project_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -38,7 +41,8 @@ async def get_project_or_404(
 
 @router.get("", response_model=list[ProjectResponse])
 async def get_projects(
-    db: Annotated[AsyncSession, Depends(get_db)], project_service: ProjectService
+    db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
     return project_service.get_projects(db)
 
@@ -64,7 +68,7 @@ async def update_project_partial(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     project_updated: ProjectUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
     return project_service.update_project_partial(project, project_updated, db)
 
@@ -77,7 +81,7 @@ async def update_project_full(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     project_updated: ProjectCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
     return project_service.update_project_full(project, project_updated, db)
 
@@ -89,7 +93,7 @@ async def update_project_full(
 async def delete_project(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
     return project_service.delete_project(project, db)
 
@@ -101,9 +105,9 @@ async def delete_project(
 async def get_tasks(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    return project_service.get_tasks(project, db)
+    return task_service.get_tasks(project, db)
 
 
 @router.post("/{project_id}/tasks", response_model=TaskResponse)
@@ -111,9 +115,9 @@ async def create_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task: TaskCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    return project_service.create_task(project, task, db)
+    return task_service.create_task(project, task, db)
 
 
 # maybe change this to /tasks/{task_id}?
@@ -122,9 +126,9 @@ async def get_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    return project_service.get_task(project, task_id, db)
+    return task_service.get_task(project, task_id, db)
 
 
 @router.delete("/{project_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -132,6 +136,6 @@ async def delete_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    project_service: ProjectService,
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    return project_service.delete_task(project, task_id, db)
+    return task_service.delete_task(project, task_id, db)
