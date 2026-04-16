@@ -5,6 +5,12 @@ from src.orchestration.message import BaseMessage
 
 
 class BaseProject:
+    """
+    This is intended to be used by the database & fastapi server
+    This will hopefully abstract some of the more complicated and nuanced code within tasks, messages and such, however in order to
+    save a lot of that data to the database, that might be neccessary
+    """
+
     def __init__(self, root_dir, agent_home):
         self.root_dir = root_dir
         self.agent_home = agent_home
