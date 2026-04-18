@@ -4,15 +4,34 @@ from src.orchestration.message import BaseMessage
 
 class BaseProject:
     """
+    The BaseProject object should manage the
+    - saving of tasks, agents, chat and such
+    - runtime creation of agents
+    - runtime creation of tasks
+      - git worktrees for each task aswell
+    - syncing dependency (task, chat, agent and such) data to the database
+    - syncing settings data to the runtime
+    - deletion of projects.
+    and such
+
+    Will make helper functions to create projects.
+
     This is intended to be used by the database & fastapi server
     This will hopefully abstract some of the more complicated and nuanced code within tasks, messages and such, however in order to
     save a lot of that data to the database, that might be neccessary
     """
 
-    def __init__(self, root_dir, agent_home):
+    def __init__(
+        self,
+        root_dir,
+        agent_home,
+        db,
+    ):
         self.root_dir = root_dir
         self.agent_home = agent_home
         self.tasks = {}
+
+        self.db = db
 
         # self.composer = create_composer(
         #    agent_home=agent_home,

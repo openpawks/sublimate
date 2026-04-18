@@ -29,6 +29,7 @@ task
 ----
 id integer PK
 name string
+todos string
 project_id integer FK >0- project.id
 chat_id integer FK >0- chat.id
 root_dir integer
