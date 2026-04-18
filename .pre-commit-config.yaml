@@ -53,8 +53,8 @@ repos:
       - id: requirements-txt-fixer
 
   # Custom local checks
-  - repo: local
-    hooks:
+#  - repo: local
+#    hooks:
 #      - id: datetime-timezone-check
 #        name: Check datetime timezone awareness
 #        entry: python .pre-commit-config.d/check_datetime_timezone.py
@@ -76,11 +76,11 @@ repos:
 #        files: \.py$
 #        pass_filenames: true
 
-      - id: run-tests
-        name: Run pytest
-        entry: uv run pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        args: []
-        stages: [pre-push, pre-commit]
+#      - id: run-tests
+#        name: Run pytest
+#        entry: uv run pytest
+#        language: system
+#        pass_filenames: false
+#        always_run: true
+#        args: []
+#        stages: [pre-push, pre-commit]

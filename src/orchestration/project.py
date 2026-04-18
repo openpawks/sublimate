@@ -1,5 +1,3 @@
-from src.orchestration.composer import create_composer
-from src.orchestration.tools import get_all_tools
 from src.orchestration.task import create_task
 from src.orchestration.message import BaseMessage
 
@@ -16,12 +14,12 @@ class BaseProject:
         self.agent_home = agent_home
         self.tasks = {}
 
-        self.composer = create_composer(
-            agent_home=agent_home,
-            tools=get_all_tools(),
-            root_dir=root_dir,
-            project=self,
-        )
+        # self.composer = create_composer(
+        #    agent_home=agent_home,
+        #    tools=get_all_tools(),
+        #    root_dir=root_dir,
+        #    project=self,
+        # )
 
     def new_task_id(self):
         return max(list(self.tasks.keys()) or [0]) + 1

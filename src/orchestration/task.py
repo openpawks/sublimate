@@ -1,10 +1,16 @@
 from src.orchestration.chat import BaseChat
+from src.orchestration.agent import AgentFactory
 from src.orchestration.tools import _create_tool
 
 
 class BaseTask:
-    def __init__(self, project, chat, name=""):
+    def __init__(self, project, root_dir, chat, name=""):
+        """
+        Creates a BaseTask object.
+        The BaseTask object invokes agents until they finish their task
+        """
         self.project = project
+        self.root_dir = root_dir
         self.chat = chat
         self.todos = ""  # AI can generate checklist etc.
         self.name = name
@@ -32,12 +38,18 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
-        # wrap so they're callable by langchain... hopefully.
+        # TODO: verify this works - wrap so they're callable by langchain... hopefully.
         self.task_tools = [_create_tool(x) for x in self.task_tools]
 
-        # reinit all agents
+        # clear all agents,
         for agent in self.agents.values():
-            agent.init()
+            agent.agent = None
+
+    def init_agent(self, agent):
+        """
+        Langchain's create_agent function, but task specific tools
+        """
+        agent.init_agent(tools=[*self.task_tools, *agent.tools])
 
     # TASK SPECIFIC TOOLS
     def read_todos(self):
@@ -95,6 +107,7 @@ class BaseTask:
         return self.agents.get(name, None)
 
     def get_active_agent(self):
+        """Find the name of whatever agent is active"""
         if self.active_agent_name:
             agent_name = self.active_agent_name
         elif self.agents:
@@ -105,6 +118,7 @@ class BaseTask:
         return self.agents.get(agent_name)
 
     def resign_agent(self, agent_name: str):
+        """Remove the agent from the task"""
         if self.get_agent(agent_name):
             del self.agents[agent_name]
             return 1
@@ -112,24 +126,57 @@ class BaseTask:
             raise KeyError(f"{agent_name} not found")
 
     def resign_agents(self, agent_names: list):
+        """Remove multiple agents from the task"""
         for agent_name in agent_names:
             self.resign_agent(agent_name)
 
-    def assign_agent(self, agent):
-        if self.get_agent(agent.name):
-            print(f"{agent.name} already assigned")
+    def assign_agent(self, agent_factory: AgentFactory):
+        """
+        Assign an agent to this task, using an agent factory
+        The agent_factory creates a clone of the agent, with all the configuration
+        derived from the parent
+        """
+        if self.get_agent(agent_factory.name):
+            print(f"{agent_factory.name} already assigned")
             return None
-        self.agents[agent.name] = agent.clone().task_agent(self)
+        new_agent = agent_factory.create()
+        new_agent.task = self
+        self.agents[new_agent.name] = new_agent
 
-    def assign_agents(self, agents):
+    def assign_agents(self, agents: list[AgentFactory]):
+        """
+        Assign multiple agents to this task,
+        saves you writing a for loop yourself.
+        """
         for agent in agents:
             self.assign_agent(agent)
 
-    def invoke_agent(self, name):
+    def invoke_agent_from_name(self, name, *args, **kwargs):
+        """
+        Invoke an agent by name
+        """
         agent = self.get_agent(name)
-        agent.invoke(self.chat.get_messages())
+        self.invoke_agent(agent, *args, **kwargs)
+
+    def invoke_agent(self, agent, messages: list[dict] = []):
+        """
+        Invoke an agent with the task's chat history.
+        You should use this as opposed to directly
+        agent.ainvoke, because this will check if there's no
+        current agent, to avoid initialising all agents
+        if many agents are assigned to a task
+
+        Args:
+            messages: optional extra messages if you want to prompt inject (not saved)
+        """
+        if not agent.agent:
+            self.init_agent(agent)
+        return agent.ainvoke([*self.chat.get_messages(), *messages])
 
     def get_messages(self, *args, **kwargs):
+        """
+        Get the task's chat history
+        """
         return self.chat.get_messages(*args, **kwargs)
 
     def was_created_at(self):
@@ -141,7 +188,13 @@ class BaseTask:
     def close(self):
         self.open = False
 
-    async def repeat_until_complete(self, max_iterations=100):
+    async def repeat_until_complete(self, max_iterations: int = 100):
+        """
+        Repeat this task, until the agent requests to stop
+
+        Args:
+            max_iterations: How many messages until it stops automatically
+        """
         self.repeating_until_complete = True
         iteration = 0
 
@@ -149,22 +202,24 @@ class BaseTask:
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
             agent = self.get_active_agent()
-            output = await agent.run()
+            output = await self.invoke_agent()
+
             self.chat.add_message(
+                # TODO: add id
                 role="assistant",
                 content=output.content,
-                username=self.active_agent_name,
+                username=agent.name,
             )
             iteration += 1
 
-        if iteration >= max_iterations:
-            # Safety: stop repeating if we hit max iterations
-            self.repeating_until_complete = False
-            self.chat.add_message(
-                role="system",
-                content=f"Stopped after {max_iterations} iterations (safety limit).",
-                username="system",
-            )
+            if iteration >= max_iterations:
+                # Safety: stop repeating if we hit max iterations
+                self.repeating_until_complete = False
+                self.chat.add_message(
+                    role="system",
+                    content=f"Stopped after {max_iterations} iterations (safety limit).",
+                    username="system",
+                )
 
         return
 

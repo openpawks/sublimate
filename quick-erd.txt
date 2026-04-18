@@ -18,18 +18,29 @@
 project
 -------
 id integer PK
-root_dir string
-agent_root_dir string
-creator_id integer FK - user.id
+name string
+user_id integer FK >0- user.id
+root_dir integer
+settings_yaml string_null
 created_at datetime
 
 
-message
--------
+task
+----
 id integer PK
-role integer
-content string
+name string
+project_id integer FK >0- project.id
+chat_id integer FK >0- chat.id
+root_dir integer
+open boolean
 created_at datetime
+
+
+task_to_agents
+--------------
+id integer PK
+task_id integer FK >0- task.id
+agent_id integer FK >0- agent.id
 
 
 chat
@@ -38,19 +49,13 @@ id integer PK
 created_at datetime
 
 
-chat_to_message
----------------
-chat_id integer PK FK -< chat.id
-message_id integer PK FK - message.id
-
-
-task
-----
+message
+-------
 id integer PK
-name string
-project_id integer FK >0- project.id
-todos string
-chat_id integer FK -0< chat.id
+chat_id integer FK >0- chat.id
+sender_type string
+sender_id integer FK >0- sender.id
+content string
 created_at datetime
 
 
@@ -58,31 +63,62 @@ user
 ----
 id integer PK
 name string
-role integer
 password_hash string
-token string
+
+
+provider
+--------
+nickname string PK
+name string
+api_key string
+kwargs string
+
+
+agent
+-----
+id integer PK
+project_id integer FK >0- project.id
+name string
+model_name string
+provider_name string FK >0- provider.name
+settings_yaml string_null
+prompt string_null
+heartbeat_prompt string_null
 created_at datetime
 
 
-user_to_project
----------------
-user_id integer PK FK >0- user.id
-project_id integer PK FK >0- project.id
-role integer
+sender
+------
+id integer PK
+sender_type string
+created_at datetime
+user_id integer_null FK 0- user.id
+agent_id integer_null FK 0- agent.id
 
 
-# zoom: 1.000
+agent_logs
+----------
+id integer PK
+agent_id string FK >0- agent.id
+content string
+created_at datetime
+
+
+# zoom: 0.729
 # view: (0, 0)
-# text-bg: #103c8b
-# text-color: #e8e6e3
-# diagram-bg: #1e2021
+# text-bg: #0d306f
+# text-color: #d8d4cf
+# diagram-bg: #181a1b
 # diagram-text: #e8e6e3
-# table-bg: #181a1b
-# table-text: #e8e6e3
-# project (565, 497)
-# message (576, 22)
-# chat (577, 176)
-# chat_to_message (32, 9)
-# task (47, 117)
-# user (563, 281)
-# user_to_project (39, 294)
+# table-bg: #131516
+# table-text: #d8d4cf
+# project (48, 15, #c3a8a0)
+# task (50, 188, #a0f2d8)
+# task_to_agents (429, 353, #abc3a4)
+# chat (47, 392, #ecf5d4)
+# message (47, 509, #d6d0cf)
+# user (767, 43, #dc9cbb)
+# provider (679, 301, #c0b1a7)
+# agent (356, 110, #b0c1c1)
+# sender (1163, 332, #f9a0c1)
+# agent_logs (820, 142)
