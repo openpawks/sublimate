@@ -1,19 +1,31 @@
-from src.orchestration.chat import BaseChat
 from src.orchestration.agent import AgentFactory
 from src.orchestration.tools import _create_tool
 
+from src.backend import models
+
+from src.services.project import project_service
+from src.services.chat import chat_service
+
+from git.exc import NoSuchPathError
+import git
+
 
 class BaseTask:
-    def __init__(self, project, root_dir, chat, name=""):
+    def __init__(
+        self,
+        db_object: models.Task,
+    ):
         """
         Creates a BaseTask object.
         The BaseTask object invokes agents until they finish their task
         """
-        self.project = project
-        self.root_dir = root_dir
-        self.chat = chat
+        self.db_object = db_object
+
+        self.project = project_service.get_project_by_id(self.db_object.project_id)
+        self.root_dir = self.db_object.root_dir
+        self.chat = chat_service.get_chat_by_id(self.db_object.chat_id)
         self.todos = ""  # AI can generate checklist etc.
-        self.name = name
+        self.name = self.db_object.name
         self.open = True
 
         self.task_tools = []
@@ -22,7 +34,21 @@ class BaseTask:
         self.active_agent_name = ""
         self.agents = {}
 
+        self.repo = None
+
+    def init_repo(self):
+        try:
+            self.repo = git.Repo(self.root_dir)
+            assert not self.repo.bare
+        except NoSuchPathError:
+            print("Path is wrong!")
+        pass
+
     def refresh_task_tools(self):
+        """
+        Add task specific tools (mostly memory stuff) to each agent
+        Clear current agent, so that agents will refresh with new tools
+        """
         self.task_tools = [
             self.read_todos,
             self.edit_todos,
@@ -44,6 +70,10 @@ class BaseTask:
         # clear all agents,
         for agent in self.agents.values():
             agent.agent = None
+
+    def init_all(self):
+        self.init_repo()
+        self.refresh_task_tools()
 
     def init_agent(self, agent):
         """
@@ -195,6 +225,9 @@ class BaseTask:
         Args:
             max_iterations: How many messages until it stops automatically
         """
+        if not self.repo:
+            self.init_all()
+
         self.repeating_until_complete = True
         iteration = 0
 
@@ -220,9 +253,10 @@ class BaseTask:
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",
                 )
-
+            # TODO: auto commit on completion
+            #
         return
 
 
-def create_task(project, messages, chat=BaseChat):
-    return BaseTask(project, chat.from_messages(messages))
+# def create_task(project, root_dir, messages, chat=BaseChat):
+#    return BaseTask(project, root_dir, chat.from_messages(messages))

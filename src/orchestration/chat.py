@@ -6,9 +6,9 @@ class BaseChat:
         # so at least with deepseek, it looks like
         # they cache automatically, so we don't have to worry about that
         # for now.
-        #
         # TODO: user ids or usernames for messaging
         # to track which user/assistant sent a message
+        # TODO: link to database
         self.messages = []
 
     @staticmethod

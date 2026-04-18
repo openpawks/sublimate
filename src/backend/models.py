@@ -68,20 +68,32 @@ class Project(Base):
     user_id: Mapped[int] = fk("users.id")
     root_dir: Mapped[str] = directory()
     settings_yaml: Mapped[str] = settings_yaml()
-    created_at: Mapped[datetime] = created_at()
 
+    user: Mapped[User] = relationship(back_populates="project")
+    tasks: Mapped[list[Task]] = relationship(back_populates="project")
     agents: Mapped[list[Agent]] = relationship(back_populates="project")
+
+    created_at: Mapped[datetime] = created_at()
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = id_as_pk()
-    name: Mapped[str] = nickname()
+    name: Mapped[str] = nickname(unique=True)
+
     project_id: Mapped[int] = fk("projects.id")
+    project: Mapped[Project] = relationship(back_populates="tasks")
+
     chat_id: Mapped[int] = fk("chats.id")
+    chat: Mapped[Chat] = relationship(
+        back_populates="task", cascade="all, delete-orphan"
+    )
+
     root_dir: Mapped[str] = directory()
     open: Mapped[str] = mapped_column(Boolean, default=True)
+
+    settings_yaml: Mapped[str] = settings_yaml()
 
     agents: Mapped[list[Agent]] = relationship(
         secondary=task_to_agent, back_populates="agents"
@@ -95,7 +107,10 @@ class Chat(Base):
 
     # back populates messages
     id: Mapped[int] = id_as_pk()
-    # TODO: verify this is right
+
+    task_id: Mapped[int] = fk("tasks.id", nullable=True)
+    task: Mapped[Task] = relationship(back_populates="chat")
+
     messages: Mapped[list[Message]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
     )
@@ -172,9 +187,7 @@ class Provider(Base):
         unique=True,
     )
     name: Mapped[str] = nickname()
-
     api_key: Mapped[str] = nickname(nullable=True)
-    settings_yaml: Mapped[str] = settings_yaml()
 
     agents: Mapped[list[Agent]] = relationship(back_populates="provider")
 
@@ -187,5 +200,7 @@ class User(Base):
     id: Mapped[int] = id_as_pk()
     name: Mapped[str] = nickname()
     password_hash: Mapped[str] = mapped_column(String(120))
+
+    projects: Mapped[list[Project]] = relationship(back_populates="user")
 
     created_at: Mapped[datetime] = created_at()
