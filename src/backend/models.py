@@ -28,7 +28,7 @@ def fk(name, index=True, **kwargs):
 
 def settings_yaml():
     return mapped_column(
-        String(2048)
+        String(2048), default=""
     )  # chose yaml, as often their format has less chars
 
 
@@ -174,7 +174,7 @@ class Provider(Base):
     name: Mapped[str] = nickname()
 
     api_key: Mapped[str] = nickname(nullable=True)
-    kwargs: Mapped[str] = settings_yaml()
+    settings_yaml: Mapped[str] = settings_yaml()
 
     agents: Mapped[list[Agent]] = relationship(back_populates="provider")
 
