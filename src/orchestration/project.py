@@ -1,4 +1,4 @@
-from src.backend import models
+from src.db import models
 
 from src.services.task import task_service
 from src.schemas.task import TaskCreate

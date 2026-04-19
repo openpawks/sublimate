@@ -1,6 +1,6 @@
 from src.services.message import message_service
 
-from src.backend import models
+from src.db import models
 
 
 class BaseChat:

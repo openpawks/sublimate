@@ -1,7 +1,7 @@
 from src.orchestration.agent import AgentFactory
 from src.orchestration.tools import _create_tool
 
-from src.backend import models
+from src.db import models
 
 from src.services.project import project_service
 from src.services.chat import chat_service

@@ -1,7 +1,7 @@
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
-from src.backend import models
+from src.db import models
 
 
 class WorkerAgent:

@@ -1,5 +1,5 @@
-from src.backend import models
-from src.backend.database import get_db
+from src.db import models
+from src.db.database import get_db
 
 from src.schemas.message import MessageCreate
 
