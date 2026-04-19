@@ -1,14 +1,29 @@
-from src.orchestration.chat import BaseChat
+from src.orchestration.agent import AgentFactory
 from src.orchestration.tools import _create_tool
+
+from src.db import models
+
+from src.services.project import project_service
+from src.services.chat import chat_service
+
+from git.exc import NoSuchPathError
+import git
 
 
 class BaseTask:
-    def __init__(self, project, chat, name=""):
-        self.project = project
-        self.chat = chat
-        self.todos = ""  # AI can generate checklist etc.
-        self.name = name
-        self.open = True
+    def __init__(
+        self,
+        db_object: models.Task,
+    ):
+        """
+        Creates a BaseTask object.
+        The BaseTask object invokes agents until they finish their task
+        """
+        self.db_object = db_object
+
+        self.project = project_service.get_base_project(self.db_object.project)
+        self.chat = chat_service.get_base_chat(self.db_object.chat)
+        self.name = self.db_object.name
 
         self.task_tools = []
 
@@ -16,11 +31,31 @@ class BaseTask:
         self.active_agent_name = ""
         self.agents = {}
 
+        self.repo = None
+
+    def init_repo(self):
+        try:
+            self.repo = git.Repo(self.db_object.root_dir)
+            assert not self.repo.bare
+            return self.repo
+        except (NoSuchPathError, AssertionError) as e:
+            print(f"Path {self.db_object.root_dir} is wrong!\nERROR: {e}")
+
+    def get_repo(self):
+        if self.repo:
+            return self.repo
+        return self.init_repo()
+
     def refresh_task_tools(self):
+        """
+        Add task specific tools (mostly memory stuff) to each agent
+        Clear current agent, so that agents will refresh with new tools
+        """
         self.task_tools = [
             self.read_todos,
             self.edit_todos,
-            self.close_task,
+            self.close,
+            self.commit_changes,
             self.request_human_approval,
         ]
 
@@ -32,22 +67,32 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
-        # wrap so they're callable by langchain... hopefully.
+        # TODO: verify this works - wrap so they're callable by langchain... hopefully.
         self.task_tools = [_create_tool(x) for x in self.task_tools]
 
-        # reinit all agents
+        # clear all agents,
         for agent in self.agents.values():
-            agent.init()
+            agent.agent = None
+
+    def init_all(self):
+        self.init_repo()
+        self.refresh_task_tools()
+
+    def init_agent(self, agent):
+        """
+        Langchain's create_agent function, but task specific tools
+        """
+        agent.init_agent(tools=[*self.task_tools, *agent.tools])
 
     # TASK SPECIFIC TOOLS
     def read_todos(self):
         """Read todo list"""
-        return self.todos
+        return self.db_object.todos
 
-    def edit_todos(self, todos: str):
+    async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
-        self.todos = todos
-        return
+        # TODO: task service update todos
+        pass
 
     def close_task(self):
         """Close task when you think its done. Do this when you are sure, and tests have passed."""
@@ -95,6 +140,7 @@ class BaseTask:
         return self.agents.get(name, None)
 
     def get_active_agent(self):
+        """Find the name of whatever agent is active"""
         if self.active_agent_name:
             agent_name = self.active_agent_name
         elif self.agents:
@@ -105,6 +151,7 @@ class BaseTask:
         return self.agents.get(agent_name)
 
     def resign_agent(self, agent_name: str):
+        """Remove the agent from the task"""
         if self.get_agent(agent_name):
             del self.agents[agent_name]
             return 1
@@ -112,24 +159,57 @@ class BaseTask:
             raise KeyError(f"{agent_name} not found")
 
     def resign_agents(self, agent_names: list):
+        """Remove multiple agents from the task"""
         for agent_name in agent_names:
             self.resign_agent(agent_name)
 
-    def assign_agent(self, agent):
-        if self.get_agent(agent.name):
-            print(f"{agent.name} already assigned")
+    def assign_agent(self, agent_factory: AgentFactory):
+        """
+        Assign an agent to this task, using an agent factory
+        The agent_factory creates a clone of the agent, with all the configuration
+        derived from the parent
+        """
+        if self.get_agent(agent_factory.name):
+            print(f"{agent_factory.name} already assigned")
             return None
-        self.agents[agent.name] = agent.clone().task_agent(self)
+        new_agent = agent_factory.create_worker()
+        new_agent.task = self
+        self.agents[new_agent.name] = new_agent
 
-    def assign_agents(self, agents):
+    def assign_agents(self, agents: list[AgentFactory]):
+        """
+        Assign multiple agents to this task,
+        saves you writing a for loop yourself.
+        """
         for agent in agents:
             self.assign_agent(agent)
 
-    def invoke_agent(self, name):
+    def invoke_agent_from_name(self, name, *args, **kwargs):
+        """
+        Invoke an agent by name
+        """
         agent = self.get_agent(name)
-        agent.invoke(self.chat.get_messages())
+        self.invoke_agent(agent, *args, **kwargs)
+
+    def invoke_agent(self, agent, messages: list[dict] = []):
+        """
+        Invoke an agent with the task's chat history.
+        You should use this as opposed to directly
+        agent.ainvoke, because this will check if there's no
+        current agent, to avoid initialising all agents
+        if many agents are assigned to a task
+
+        Args:
+            messages: optional extra messages if you want to prompt inject (not saved)
+        """
+        if not agent.agent:
+            self.init_agent(agent)
+        return agent.ainvoke([*self.chat.get_messages(), *messages])
 
     def get_messages(self, *args, **kwargs):
+        """
+        Get the task's chat history
+        """
         return self.chat.get_messages(*args, **kwargs)
 
     def was_created_at(self):
@@ -138,10 +218,30 @@ class BaseTask:
     def was_last_updated_at(self):
         return self.chat.was_last_updated_at()
 
-    def close(self):
-        self.open = False
+    def commit_changes(self, message: str):
+        """
+        Add everything to staging area, and commit changes.
 
-    async def repeat_until_complete(self, max_iterations=100):
+        Args:
+            message: commit message
+        """
+        repo = self.get_repo()
+        repo.index.add("*")
+        return repo.index.commit(message)
+
+    async def close(self):
+        self.project.close_task(self.db_object)
+
+    async def repeat_until_complete(self, max_iterations: int = 100):
+        """
+        Repeat this task, until the agent requests to stop
+
+        Args:
+            max_iterations: How many messages until it stops automatically
+        """
+        if not self.repo:
+            self.init_all()
+
         self.repeating_until_complete = True
         iteration = 0
 
@@ -149,25 +249,24 @@ class BaseTask:
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
             agent = self.get_active_agent()
-            output = await agent.run()
-            self.chat.add_message(
+            output = await self.invoke_agent()
+
+            await self.chat.add_message(
+                # TODO: add id
                 role="assistant",
                 content=output.content,
-                username=self.active_agent_name,
+                username=agent.name,
             )
             iteration += 1
 
-        if iteration >= max_iterations:
-            # Safety: stop repeating if we hit max iterations
-            self.repeating_until_complete = False
-            self.chat.add_message(
-                role="system",
-                content=f"Stopped after {max_iterations} iterations (safety limit).",
-                username="system",
-            )
-
+            if iteration >= max_iterations:
+                # Safety: stop repeating if we hit max iterations
+                self.repeating_until_complete = False
+                await self.chat.add_message(
+                    role="system",
+                    content=f"Stopped after {max_iterations} iterations (safety limit).",
+                    username="system",
+                )
+            # TODO: auto commit on completion
+            #
         return
-
-
-def create_task(project, messages, chat=BaseChat):
-    return BaseTask(project, chat.from_messages(messages))

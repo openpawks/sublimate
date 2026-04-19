@@ -3,7 +3,7 @@ from langchain.chat_models import init_chat_model
 from pathlib import Path
 from dotenv import load_dotenv
 from src.orchestration.tools import _create_tool
-from src.orchestration.agent import BaseAgent
+from src.orchestration.agent import WorkerAgent
 from src.orchestration.heartbeat import Heartbeat
 
 import os
@@ -158,7 +158,7 @@ class BaseComposer:
         # For other tools, return as-is
         return tool
 
-    def init_agent(self, agent, agent_data, Agent=BaseAgent):
+    def init_agent(self, agent, agent_data, Agent=WorkerAgent):
         # TODO: add support for param to set different:
         # heartbeat path (currently read from agent_home/heartbeats/name.md)
         # agent path (currently read from agent_home/name.md)
@@ -375,7 +375,7 @@ class BaseComposer:
 
         self.agents[agent].load_agent()
 
-    def init_agents(self, Agent=BaseAgent):
+    def init_agents(self, Agent=WorkerAgent):
         for agent in self.data.get("agents").keys():
             self.init_agent(agent, self.data.get("agents").get(agent), Agent)
 
