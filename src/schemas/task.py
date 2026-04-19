@@ -17,3 +17,19 @@ class TaskCreate(TaskBase):
     settings_yaml: str | None = Field(
         min_length=0, max_length=2048, description="optional extra settings"
     )
+    todos: str | None = Field(
+        min_length=0,
+        max_length=512,
+        description="short todo list for the AI to remember what to do in a task",
+    )
+
+
+class TaskUpdate(TaskBase):
+    settings_yaml: str | None = Field(
+        min_length=0, max_length=2048, description="optional extra settings"
+    )
+    todos: str | None = Field(
+        min_length=0,
+        max_length=512,
+        description="short todo list for the AI to remember what to do in a task",
+    )

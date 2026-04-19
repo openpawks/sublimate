@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 
 
 class ProjectBase(BaseModel):
-    name: str = Field(min_length=1, max_length=50, description="Name of the project")
     user_id: int = Field(
         description="""user that created the project
                 For now, in testing, this can be a single user application, so
@@ -15,6 +14,16 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
+    name: str = Field(min_length=1, max_length=50, description="Name of the project")
+    settings_yaml: str | None = Field(
+        min_length=0, max_length=2048, description="optional extra settings"
+    )
+
+
+class ProjectUpdate(ProjectBase):
+    name: str | None = Field(
+        min_length=1, max_length=50, description="Name of the project"
+    )
     settings_yaml: str | None = Field(
         min_length=0, max_length=2048, description="optional extra settings"
     )
