@@ -31,7 +31,7 @@ class Heartbeat:
             await self.abeat()
 
     def beat(self):
-        # NOTE: callback is invoked without task context.
+        # TODO: callback is invoked without task context.
         # we should probably also save task data incase program stops suddenly
         return self.callback()
 

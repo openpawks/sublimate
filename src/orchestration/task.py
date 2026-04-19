@@ -3,9 +3,6 @@ from src.orchestration.tools import _create_tool
 
 from src.db import models
 
-from src.services.project import project_service
-from src.services.chat import chat_service
-from src.services.task import task_service
 from src.schemas.task import TaskUpdate
 
 from git.exc import NoSuchPathError
@@ -21,6 +18,9 @@ class BaseTask:
         Creates a BaseTask object.
         The BaseTask object invokes agents until they finish their task
         """
+        from src.services.project import project_service
+        from src.services.chat import chat_service
+
         self.db_object = db_object
 
         self.project = project_service.get_base_project(self.db_object.project)
@@ -93,6 +93,8 @@ class BaseTask:
 
     async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
+        from src.services.task import task_service
+
         updated_task = await task_service.update_task(
             self.db_object.id, TaskUpdate(todos=todos)
         )

@@ -1,6 +1,7 @@
 from src.orchestration.project import BaseProject
 from src.db import models
-from src.db.database import get_db
+from src.db.database import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schemas.project import ProjectCreate, ProjectUpdate
 
@@ -32,39 +33,61 @@ class ProjectService:
 
         return self.projects_in_memory.get(db_object.id)
 
-    async def get_project_by_id(self, id: int) -> BaseProject | None:
+    async def get_project_by_id(
+        self, id: int, db: AsyncSession | None = None
+    ) -> BaseProject | None:
         """
         Get project by id, (BaseProject object)
 
         Args:
             id: project id
+            db: optional database session (creates one if not provided)
         """
-        db = await get_db()
+        close_db = False
+        if db is None:
+            db = await get_db_session()
+            close_db = True
 
-        result = await db.execute(select(models.Project).where(models.Project.id == id))
-        project_db = result.scalars().first()
+        try:
+            result = await db.execute(
+                select(models.Project).where(models.Project.id == id)
+            )
+            project_db = result.scalars().first()
 
-        if project_db:
-            return self.get_base_project(project_db)
-        else:
-            return None
+            if project_db:
+                return self.get_base_project(project_db)
+            else:
+                return None
+        finally:
+            if close_db:
+                await db.close()
 
-    async def get_projects_by_user(self, user_id: int) -> list[BaseProject]:
+    async def get_projects_by_user(
+        self, user_id: int, db: AsyncSession | None = None
+    ) -> list[BaseProject]:
         """
         Get all projects for a user
         """
-        db = await get_db()
-        result = await db.execute(
-            select(models.Project).where(models.Project.user_id == user_id)
-        )
-        projects = result.scalars().all()
-        return [self.get_base_project(project) for project in projects]
+        close_db = False
+        if db is None:
+            db = await get_db_session()
+            close_db = True
+
+        try:
+            result = await db.execute(
+                select(models.Project).where(models.Project.user_id == user_id)
+            )
+            projects = result.scalars().all()
+            return [self.get_base_project(project) for project in projects]
+        finally:
+            if close_db:
+                await db.close()
 
     async def get_all_projects(self) -> list[BaseProject]:
         """
         Get all projects
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(select(models.Project))
         projects = result.scalars().all()
         return [self.get_base_project(project) for project in projects]
@@ -76,7 +99,7 @@ class ProjectService:
         """
         Create a new project in the database
         """
-        db = await get_db()
+        db = await get_db_session()
 
         new_project = models.Project(
             name=project.name,
@@ -96,7 +119,7 @@ class ProjectService:
         Helper function to create a project
         """
         project_obj = await self.create_project_db(project)
-        return await self.get_base_project(project_obj)
+        return self.get_base_project(project_obj)
 
     async def update_project(
         self, id: int, project_update: ProjectUpdate
@@ -104,14 +127,14 @@ class ProjectService:
         """
         Update an existing project
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Project).where(models.Project.id == id))
         project_db = result.scalars().first()
         if not project_db:
             return None
 
-        update_data = project_update.dict(exclude_unset=True)
+        update_data = project_update.model_dump(exclude_unset=True)
 
         if update_data:
             await db.execute(
@@ -128,7 +151,7 @@ class ProjectService:
         """
         Delete a project by id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Project).where(models.Project.id == id))
         project_db = result.scalars().first()

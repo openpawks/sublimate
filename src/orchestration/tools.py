@@ -284,7 +284,7 @@ def create_task(
     Returns:
         Task ID or error description
     """
-    # NOTE: not yet integrated with BaseTask service - currently mock implementation
+    # TODO: not yet integrated with BaseTask service - currently mock implementation
     try:
         if tags is None:
             tags = []
@@ -323,7 +323,7 @@ def close_task(task_id: str, notes: str = "") -> str:
     Returns:
         Success message or error description
     """
-    # NOTE: not yet integrated with project service - currently mock implementation
+    # TODO: not yet integrated with project service - currently mock implementation
     try:
         # In a real implementation, this would update a database
         return f"Task {task_id} closed. Notes: {notes}"
@@ -444,7 +444,7 @@ def grep_files(
     Returns:
         JSON list of matches with file, line number, and line text, or error message
     """
-    # NOTE: agent permission checking not yet implemented - searches all files
+    # TODO: agent permission checking not yet implemented - searches all files
     try:
         search_path = Path(path) if path else Path(".")
         if not search_path.exists():

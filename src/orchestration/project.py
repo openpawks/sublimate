@@ -36,6 +36,14 @@ class BaseProject:
         self.repo = None
         self.repos = {}
 
+    @property
+    def name(self):
+        return self.db_object.name
+
+    @property
+    def id(self):
+        return self.db_object.id
+
     @staticmethod
     def _is_filesafe(name: str) -> bool:
         """
@@ -159,7 +167,7 @@ class BaseProject:
         Create a task, calling task_service to create task, but automatically set
         root_dir to the worktree root & automatically set project to this project's id
         """
-        # NOTE: version control every time a new task is created - not yet implemented
+        # TODO: version control every time a new task is created - not yet implemented
         # - task permission control here!
         # WARNING: agents might be able to still write and
         # run a script that works outside of the cwd

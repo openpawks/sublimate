@@ -1,9 +1,8 @@
 from src.db import models
-from src.db.database import get_db
+from src.db.database import get_db_session
 
 from src.schemas.message import MessageCreate, MessageUpdate
 
-from src.services.chat import chat_service
 
 from sqlalchemy import select, update, delete
 
@@ -17,7 +16,9 @@ class MessageService:
         Create a message for a given chat_id
         Also attempt to update the chat object in memory's data
         """
-        db = await get_db()
+        from src.services.chat import chat_service
+
+        db = await get_db_session()
 
         chat = await chat_service.get_chat_by_id(message.chat_id)
 
@@ -39,7 +40,7 @@ class MessageService:
         """
         Get a message by id
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()
         return message
@@ -48,7 +49,7 @@ class MessageService:
         """
         Get all messages for a chat
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(
             select(models.Message).where(models.Message.chat_id == chat_id)
         )
@@ -59,7 +60,7 @@ class MessageService:
         """
         Get all messages
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(select(models.Message))
         messages = result.scalars().all()
         return messages
@@ -68,14 +69,14 @@ class MessageService:
         """
         Update a message
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()
         if not message:
             return None
 
-        update_data = message_update.dict(exclude_unset=True)
+        update_data = message_update.model_dump(exclude_unset=True)
 
         if update_data:
             await db.execute(
@@ -92,7 +93,7 @@ class MessageService:
         """
         Delete a message by id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()

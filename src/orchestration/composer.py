@@ -71,7 +71,7 @@ class BaseComposer:
             )
 
     def fetch_api_key_for_provider(self, provider: str) -> str:
-        # NOTE: fetch from provider service database not yet implemented
+        # TODO: fetch from provider service database not yet implemented
         # For now, use environment variable with provider prefix
         key = os.environ.get(f"{provider.upper()}_API_KEY")
         if key:
@@ -161,7 +161,7 @@ class BaseComposer:
         return tool
 
     def init_agent(self, agent, agent_data, Agent=WorkerAgent):
-        # NOTE: paths are currently hardcoded:
+        # TODO: paths are currently hardcoded:
         # heartbeat path: agent_home/heartbeats/name.md
         # agent path: agent_home/name.md
         # state path: agent_home/states/dependency_name.md

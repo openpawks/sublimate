@@ -1,12 +1,12 @@
 from src.orchestration.task import BaseTask
 from src.db import models
-from src.db.database import get_db
+from src.db.database import get_db_session
 
-from src.services.project import project_service
 
 from src.schemas.task import TaskCreate, TaskUpdate
 
 from sqlalchemy import select, update, delete
+from sqlalchemy.orm import selectinload
 
 
 class TaskService:
@@ -55,9 +55,13 @@ class TaskService:
         Args:
             id: task id
         """
-        db = await get_db()
+        db = await get_db_session()
 
-        result = await db.execute(select(models.Task).where(models.Task.id == id))
+        result = await db.execute(
+            select(models.Task)
+            .where(models.Task.id == id)
+            .options(selectinload(models.Task.project), selectinload(models.Task.chat))
+        )
         task_db = result.scalars().first()
 
         if task_db:
@@ -69,9 +73,11 @@ class TaskService:
         """
         Get all tasks for a project
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(
-            select(models.Task).where(models.Task.project_id == project_id)
+            select(models.Task)
+            .where(models.Task.project_id == project_id)
+            .options(selectinload(models.Task.project), selectinload(models.Task.chat))
         )
         tasks = result.scalars().all()
         return [self.get_base_task(task) for task in tasks]
@@ -80,8 +86,12 @@ class TaskService:
         """
         Get all tasks
         """
-        db = await get_db()
-        result = await db.execute(select(models.Task))
+        db = await get_db_session()
+        result = await db.execute(
+            select(models.Task).options(
+                selectinload(models.Task.project), selectinload(models.Task.chat)
+            )
+        )
         tasks = result.scalars().all()
         return [self.get_base_task(task) for task in tasks]
 
@@ -89,7 +99,10 @@ class TaskService:
         """
         Create a new task in the database
         """
-        db = await get_db()
+        from src.services.project import project_service
+        from src.services.chat import chat_service
+
+        db = await get_db_session()
 
         project = await project_service.get_project_by_id(task.project_id)
         if not project:
@@ -114,7 +127,20 @@ class TaskService:
         await db.refresh(new_task)
         await db.refresh(project.db_object)
 
-        return new_task
+        # Create a chat for the task
+        chat = await chat_service.create_chat_db(task_id=new_task.id)
+        new_task.chat_id = chat.id
+        await db.commit()
+
+        # Reload task with relationships
+        result = await db.execute(
+            select(models.Task)
+            .where(models.Task.id == new_task.id)
+            .options(selectinload(models.Task.project), selectinload(models.Task.chat))
+        )
+        task_with_relations = result.scalars().first()
+
+        return task_with_relations
 
     async def create_task(self, task: TaskCreate):
         """
@@ -122,21 +148,21 @@ class TaskService:
         """
         task_obj = await self.create_task_db(task)
         if task_obj:
-            return await self.get_base_task(task_obj)
+            return self.get_base_task(task_obj)
         return None
 
     async def update_task(self, id: int, task_update: TaskUpdate) -> BaseTask | None:
         """
         Update an existing task
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Task).where(models.Task.id == id))
         task_db = result.scalars().first()
         if not task_db:
             return None
 
-        update_data = task_update.dict(exclude_unset=True)
+        update_data = task_update.model_dump(exclude_unset=True)
 
         if update_data:
             await db.execute(
@@ -151,7 +177,7 @@ class TaskService:
         """
         Delete a task by id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Task).where(models.Task.id == id))
         task_db = result.scalars().first()

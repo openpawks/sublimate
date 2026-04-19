@@ -1,6 +1,6 @@
 from src.orchestration.agent import AgentFactory
 from src.db import models
-from src.db.database import get_db
+from src.db.database import get_db_session
 
 from src.schemas.agent import AgentCreate, AgentUpdate
 
@@ -41,7 +41,7 @@ class AgentService:
         Args:
             id: agent id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()
@@ -55,7 +55,7 @@ class AgentService:
         """
         Get all agents for a project
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(
             select(models.Agent).where(models.Agent.project_id == project_id)
         )
@@ -66,7 +66,7 @@ class AgentService:
         """
         Get all agents
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(select(models.Agent))
         agents = result.scalars().all()
         return [self.get_agent_factory(agent) for agent in agents]
@@ -78,7 +78,7 @@ class AgentService:
         """
         Create a new agent in the database
         """
-        db = await get_db()
+        db = await get_db_session()
 
         new_agent = models.Agent(
             name=agent.name,
@@ -101,7 +101,7 @@ class AgentService:
         Helper function to create a agent
         """
         agent_obj = await self.create_agent_db(agent)
-        return await self.get_agent_factory(agent_obj)
+        return self.get_agent_factory(agent_obj)
 
     async def update_agent(
         self, id: int, agent_update: AgentUpdate
@@ -109,14 +109,14 @@ class AgentService:
         """
         Update an existing agent
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()
         if not agent_db:
             return None
 
-        update_data = agent_update.dict(exclude_unset=True)
+        update_data = agent_update.model_dump(exclude_unset=True)
 
         if update_data:
             await db.execute(
@@ -131,7 +131,7 @@ class AgentService:
         """
         Delete an agent by id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()

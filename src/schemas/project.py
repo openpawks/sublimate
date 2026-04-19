@@ -21,9 +21,14 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectUpdate(ProjectBase):
+    user_id: int | None = Field(default=None)
+    root_dir: str | None = Field(default=None)
     name: str | None = Field(
-        min_length=1, max_length=50, description="Name of the project"
+        min_length=1, max_length=50, description="Name of the project", default=None
     )
     settings_yaml: str | None = Field(
-        min_length=0, max_length=2048, description="optional extra settings"
+        min_length=0,
+        max_length=2048,
+        description="optional extra settings",
+        default=None,
     )

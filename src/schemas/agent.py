@@ -29,13 +29,34 @@ class AgentCreate(AgentBase):
 
 
 class AgentUpdate(AgentBase):
+    name: str | None = Field(
+        min_length=1, max_length=50, description="agent nickname", default=None
+    )
+    project_id: int | None = Field(default=None)
+    prompt: str | None = Field(
+        min_length=0, max_length=4096, description="prompt for agent", default=None
+    )
+    heartbeat_prompt: str | None = Field(
+        min_length=0,
+        max_length=4096,
+        description="heartbeat_prompt for agent",
+        default=None,
+    )
+    settings_yaml: str | None = Field(
+        min_length=0,
+        max_length=4096,
+        description="optional settings in yaml format",
+        default=None,
+    )
     provider_id: str | None = Field(
         min_length=1,
         max_length=50,
         description="nickname of provider that the user has assigned for provider",
+        default=None,
     )
     model_name: str | None = Field(
         min_length=1,
         max_length=50,
         description="Name of the model, such as 'deepseek-reasoner', 'gpt-5', 'qwen3.5:9b'",
+        default=None,
     )

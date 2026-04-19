@@ -1,6 +1,6 @@
 from src.orchestration.chat import BaseChat
 from src.db import models
-from src.db.database import get_db
+from src.db.database import get_db_session
 
 from sqlalchemy import select, update, delete
 
@@ -39,7 +39,7 @@ class ChatService:
         Args:
             id: chat id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Chat).where(models.Chat.id == id))
         chat_db = result.scalars().first()
@@ -53,7 +53,7 @@ class ChatService:
         """
         Get all chats for a task
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(
             select(models.Chat).where(models.Chat.task_id == task_id)
         )
@@ -64,7 +64,7 @@ class ChatService:
         """
         Get all chats
         """
-        db = await get_db()
+        db = await get_db_session()
         result = await db.execute(select(models.Chat))
         chats = result.scalars().all()
         return [self.get_base_chat(chat) for chat in chats]
@@ -79,7 +79,7 @@ class ChatService:
         Args:
             task_id: related task id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         new_chat = models.Chat(task_id=task_id)
 
@@ -94,13 +94,13 @@ class ChatService:
         Helper function to create a chat
         """
         chat_obj = await self.create_chat_db(task_id)
-        return await self.get_base_chat(chat_obj)
+        return self.get_base_chat(chat_obj)
 
     async def update_chat(self, id: int, task_id: int | None = None) -> BaseChat | None:
         """
         Update a chat's task_id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Chat).where(models.Chat.id == id))
         chat_db = result.scalars().first()
@@ -124,7 +124,7 @@ class ChatService:
         """
         Delete a chat by id
         """
-        db = await get_db()
+        db = await get_db_session()
 
         result = await db.execute(select(models.Chat).where(models.Chat.id == id))
         chat_db = result.scalars().first()

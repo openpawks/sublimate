@@ -26,9 +26,9 @@ def fk(name, index=True, **kwargs):
     return mapped_column(ForeignKey(name), index=index, **kwargs)
 
 
-def settings_yaml():
+def settings_yaml(**kwargs):
     return mapped_column(
-        String(2048), default=""
+        String(2048), default="", **kwargs
     )  # chose yaml, as often their format has less chars
 
 
@@ -38,8 +38,8 @@ def directory():
     )  # someone can come up with a better number if they want
 
 
-def nickname():
-    return mapped_column(String(50), default="")
+def nickname(**kwargs):
+    return mapped_column(String(50), default="", **kwargs)
 
 
 def created_at():
@@ -69,7 +69,7 @@ class Project(Base):
     root_dir: Mapped[str] = directory()
     settings_yaml: Mapped[str] = settings_yaml()
 
-    user: Mapped[User] = relationship(back_populates="project")
+    user: Mapped[User] = relationship(back_populates="projects")
     tasks: Mapped[list[Task]] = relationship(back_populates="project")
     agents: Mapped[list[Agent]] = relationship(back_populates="project")
 
@@ -85,20 +85,20 @@ class Task(Base):
     project_id: Mapped[int] = fk("projects.id")
     project: Mapped[Project] = relationship(back_populates="tasks")
 
-    chat_id: Mapped[int] = fk("chats.id")
-    chat: Mapped[Chat] = relationship(
-        back_populates="task", cascade="all, delete-orphan"
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", use_alter=True), nullable=True, index=True
     )
+    chat: Mapped[Chat] = relationship(foreign_keys=[chat_id], uselist=False)
 
     todos: Mapped[str] = mapped_column(String(512), default="")
 
     root_dir: Mapped[str] = directory()
-    open: Mapped[str] = mapped_column(Boolean, default=True)
+    open: Mapped[bool] = mapped_column(Boolean, default=True)
 
     settings_yaml: Mapped[str] = settings_yaml()
 
     agents: Mapped[list[Agent]] = relationship(
-        secondary=task_to_agent, back_populates="agents"
+        secondary=task_to_agent, back_populates="tasks"
     )
 
     created_at: Mapped[datetime] = created_at()
@@ -110,8 +110,10 @@ class Chat(Base):
     # back populates messages
     id: Mapped[int] = id_as_pk()
 
-    task_id: Mapped[int] = fk("tasks.id", nullable=True)
-    task: Mapped[Task] = relationship(back_populates="chat")
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", use_alter=True), nullable=True, index=True
+    )
+    # task: Mapped[Task] = relationship(back_populates="chat", foreign_keys=[task_id], uselist=False, remote_side="Task.id")
 
     messages: Mapped[list[Message]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
@@ -138,7 +140,7 @@ class Message(Base):
 
     content: Mapped[str] = message_content()
 
-    created_at: created_at()
+    created_at: Mapped[datetime] = created_at()
 
 
 class Sender(Base):
@@ -151,10 +153,12 @@ class Sender(Base):
     messages: Mapped[list[Message]] = relationship(back_populates="sender")
 
     user_id: Mapped[int] = fk("users.id", nullable=True)
-    user: Mapped[User] = relationship(back_populates="user")
+    user: Mapped[User] = relationship(back_populates="senders", foreign_keys=[user_id])
 
     agent_id: Mapped[int] = fk("agents.id", nullable=True)
-    agent: Mapped[Agent] = relationship(back_populates="agent")
+    agent: Mapped[Agent] = relationship(
+        back_populates="senders", foreign_keys=[agent_id]
+    )
 
     created_at: Mapped[datetime] = created_at()
 
@@ -180,8 +184,9 @@ class Agent(Base):
     )  # could be half, but eh.
 
     tasks: Mapped[list[Task]] = relationship(
-        secondary=task_to_agent, back_populates="tasks"
+        secondary=task_to_agent, back_populates="agents"
     )
+    senders: Mapped[list[Sender]] = relationship(back_populates="agent")
 
     created_at: Mapped[datetime] = created_at()
 
@@ -211,5 +216,6 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(120))
 
     projects: Mapped[list[Project]] = relationship(back_populates="user")
+    senders: Mapped[list[Sender]] = relationship(back_populates="user")
 
     created_at: Mapped[datetime] = created_at()
