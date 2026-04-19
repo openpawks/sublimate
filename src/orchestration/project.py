@@ -37,6 +37,12 @@ class BaseProject:
         self.repos = {}
 
     def init_repo(self):
+        """
+        Attempt to try to find the (bare) repo from the project dir,
+        if its not there, then create one.
+
+        If the repo isn't bare, then raise an error
+        """
         try:
             repo = git.Repo(self.db_object.root_dir)  # (bare)
             assert repo.bare
@@ -69,6 +75,28 @@ class BaseProject:
             raise AssertionError(
                 "Your repo is not a 'bare' repo (needs to be able to work with worktrees)"
             )
+
+    def get_worktrees(self) -> list:
+        """
+        Get the list of worktrees, GitPython doesn't support this natively
+        so we have to write a custom function to parse the string result
+        """
+        # TODO:
+        pass
+
+    def get_branches(self) -> list:
+        """
+        Get the list of branches
+        """
+        return self.get_repo().heads
+
+    def get_worktree(self, name: str):
+        """
+        Get a worktree.
+        Get the list of worktrees, see if it exists, if not, then create it (only if theres a branch, of the same name)
+        """
+        # TODO:
+        pass
 
     def get_dev_worktree_repo(self):
         """
@@ -104,6 +132,7 @@ class BaseProject:
         # TODO: verify file/branch safe name or convert to
         # WARNING: no file/branch safe name rn, please implement
 
+        # create new worktree
         self.get_repo().git.worktree(
             "add",
             "-b",
@@ -112,7 +141,7 @@ class BaseProject:
             f"{branches_from}",  # or where-ever we are branching from
         )
 
-        # create new worktree
+        # create new task
         task = await task_service.create_task(
             task=TaskCreate(
                 name=name,
@@ -123,3 +152,37 @@ class BaseProject:
         )
 
         return task
+
+    async def load_task(self, task_db_obj: models.Task):
+        """
+        Load task from task object, should also ensure that the worktree exists
+        if not then create one. Ensure task not closed
+        """
+        # TODO:
+        pass
+
+    async def close_task(self, task_db_obj: models.Task, auto_merge: bool = False):
+        """
+        Close task, use task_service to close the task (use udpate function, if not there,
+        then someone needs to write that function), remove the worktree.
+        """
+        # TODO:
+
+        if auto_merge:
+            self.merge_task_into_dev(task_db_obj)
+
+    async def merge_task_into_dev(self, task_db_obj: models.Task):
+        """
+        Merge the task's branch into main. Ensure it passes checks and precomm checks
+        If there's a merge conflict, should make a new task to resolve that merge conflict and
+        merge that into main
+        """
+        # TODO:
+        pass
+
+    async def reopen_task(self, task_db_obj: models.Task):
+        """
+        If a task is closed, then open it, add a worktree to the project
+        """
+        # TODO:
+        pass

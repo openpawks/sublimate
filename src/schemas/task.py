@@ -25,6 +25,7 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(TaskBase):
+    open: bool | None = Field(description="is the task open?")
     settings_yaml: str | None = Field(
         min_length=0, max_length=2048, description="optional extra settings"
     )

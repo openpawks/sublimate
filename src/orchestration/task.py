@@ -37,9 +37,14 @@ class BaseTask:
         try:
             self.repo = git.Repo(self.db_object.root_dir)
             assert not self.repo.bare
-        except NoSuchPathError:
-            print("Path is wrong!")
-        pass
+            return self.repo
+        except (NoSuchPathError, AssertionError) as e:
+            print(f"Path {self.db_object.root_dir} is wrong!\nERROR: {e}")
+
+    def get_repo(self):
+        if self.repo:
+            return self.repo
+        return self.init_repo()
 
     def refresh_task_tools(self):
         """
@@ -49,7 +54,8 @@ class BaseTask:
         self.task_tools = [
             self.read_todos,
             self.edit_todos,
-            self.close_task,
+            self.close,
+            self.commit_changes,
             self.request_human_approval,
         ]
 
@@ -83,10 +89,10 @@ class BaseTask:
         """Read todo list"""
         return self.db_object.todos
 
-    def edit_todos(self, todos: str):
+    async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
-        self.db_object.todos = todos
-        return
+        # TODO: task service update todos
+        pass
 
     def close_task(self):
         """Close task when you think its done. Do this when you are sure, and tests have passed."""
@@ -212,10 +218,19 @@ class BaseTask:
     def was_last_updated_at(self):
         return self.chat.was_last_updated_at()
 
-    def close(self):
-        # TODO: use task_service to close task
-        pass
-        # self.open = False
+    def commit_changes(self, message: str):
+        """
+        Add everything to staging area, and commit changes.
+
+        Args:
+            message: commit message
+        """
+        repo = self.get_repo()
+        repo.index.add("*")
+        return repo.index.commit(message)
+
+    async def close(self):
+        self.project.close_task(self.db_object)
 
     async def repeat_until_complete(self, max_iterations: int = 100):
         """

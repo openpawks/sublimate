@@ -63,6 +63,8 @@ class TaskService:
             # project doesn't exist
             return
 
+        # TODO: verify name is filesafe
+
         new_task = models.Task(
             name=task.name,
             project_id=task.project_id,
