@@ -2,6 +2,10 @@ from src.orchestration.task import BaseTask
 from src.backend import models
 from src.backend.database import get_db
 
+from src.services.project import project_service
+
+from src.schemas.task import TaskCreate
+
 from sqlalchemy import select
 
 
@@ -48,34 +52,28 @@ class TaskService:
         else:
             return None
 
-    async def create_task_db(
-        self,
-        name: str,
-        project_id: int,
-        root_dir: str,
-        settings_yaml: str = "",
-    ):
+    async def create_task_db(self, task: TaskCreate):
         """
         Create a new task in the database
-
-        Args:
-            name: name of the task
-            project_id: id of parent project
-            root_dir: worktree root directory
-            settings_yaml: optional extra settings
         """
         db = await get_db()
 
+        project = project_service.get_project_by_id(task.project_id)
+        if not project:
+            # project doesn't exist
+            return
+
         new_task = models.Task(
-            name=name,
-            project_id=project_id,
-            root_dir=root_dir,
-            settings_yaml=settings_yaml,
+            name=task.name,
+            project_id=task.project_id,
+            root_dir=task.root_dir,
+            settings_yaml=task.settings_yaml,
         )
 
         db.add(new_task)
         await db.commit()
-        await db.refresh()
+        await db.refresh(new_task)
+        await db.refresh(project.db_object)
 
         return new_task
 

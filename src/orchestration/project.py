@@ -2,6 +2,9 @@ from src.orchestration.task import create_task
 
 from src.backend import models
 
+from src.services.task import task_service
+from src.schemas.task import TaskCreate
+
 import os
 
 import git
@@ -32,43 +35,82 @@ class BaseProject:
         db_object: models.Project,
     ):
         self.db_object = models.Project
-        self.root_dir = self.db_object.root_dir  # root_dir
-
         self.repo = None
+        self.repos = {}
 
     def init_repo(self):
         try:
-            repo = git.Repo(self.root_dir)  # (bare)
+            repo = git.Repo(self.db_object.root_dir)  # (bare)
             assert repo.bare
             return repo
         except NoSuchPathError:
-            os.makedirs(self.root_dir, exist_ok=True)
-            return git.Repo.init(self.root_dir, bare=True)
+            root_dir = self.db_object.root_dir
+            print(f"NoSuchPathError, no repo at {root_dir}, creating new one")
+
+            # make directories
+            os.makedirs(root_dir, exist_ok=True)
+            # create bare repo
+            repo = git.Repo.init(root_dir, bare=True)
+            self.repo = repo
+            # write first commit (you have to)
+            repo.git.worktree("add", "main")
+            # write a dummy file for first commit
+            with open(os.path.join(root_dir, "main", "README.md"), "w") as f:
+                f.write(f"# Hello from {self.db_object.name or 'no name'}")
+            # stage all changes for our commit
+            repo.index.add("*")
+            # commit
+            repo.index.commit("Initial commit")
+            # now clean up, for other agents and such
+            repo.git.worktree("remove", "main")
+            os.makedirs(os.join(root_dir, "sublimate"), exist_ok=True)
+            # also add a dev branch
+            repo.git.worktree("add", "-b", "dev", "sublimate/dev", "main")
+            return repo
         except AssertionError:
             raise AssertionError(
                 "Your repo is not a 'bare' repo (needs to be able to work with worktrees)"
             )
 
-    def new_task_id(self):
-        return max(list(self.tasks.keys()) or [0]) + 1
+    def get_dev_worktree_repo(self):
+        """
+        Get the "regular" repo for dev
+        """
+        dev_repo = self.repos.get("dev")
+        if dev_repo:
+            return dev_repo
+        else:
+            dev_repo = git.Repo(
+                os.path.join(self.db_object.root_dir, "sublimate", "dev")
+            )
+            self.repos.dev = dev_repo
+            return dev_repo
 
-    def get_task_by_id(self, id):
-        return self.tasks.get(id, None)
+    def get_repo(self):
+        if self.repo:
+            return self.repo
+        else:
+            return self.init_repo()
 
-    def create_task(self, task_id=-1, messages: list = [], userid=0):
+    def create_task(self, name=str, settings_yaml=""):
         # TODO: version control every time a new task is created
         # - task permission control here!
         # WARNING: agents might be able to still write and
         # run a script that works outside of the cwd
         # so we need to write fixes for that
 
-        # new_task = create_task(self, messages or [BaseMessage("user", prompt, userid)])
+        # TODO: verify file/branch safe name or convert to
+        # WARNING: no file/branch safe name rn, please implement
 
-        # new_task.id = self.new_task_id()
-        # self.tasks[new_task.id] = new_task
+        # ISSUE: UNFINISHED
 
-        # return new_task
-        pass
+        self.get_repo().git.worktree(
+            "add",
+            "-b",
+        )
+
+        # create new worktree
+        task_service.create_task(task=TaskCreate())
 
     def load_task_from_messages(self, messages, id):
         if self.get_task_by_id(id):

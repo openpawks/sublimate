@@ -123,10 +123,15 @@ class Message(Base):
 
     id: Mapped[int] = id_as_pk()
 
+    # yes im aware this is lazy
+    # no i'm not changing it (myself)
+    # role is "temporary"
+    role: Mapped[str] = mapped_column(String(10), nullable=True)
+
     chat_id: Mapped[int] = fk("chats.id")
     chat: Mapped[Chat] = relationship(back_populates="messages")
 
-    sender_id: Mapped[int] = fk("senders.id")
+    sender_id: Mapped[int] = fk("senders.id", nullable=True)
     sender: Mapped[Sender] = relationship(back_populates="messages")
 
     content: Mapped[str] = message_content()

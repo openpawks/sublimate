@@ -64,7 +64,7 @@ class ChatService:
 
         db.add(new_chat)
         await db.commit()
-        await db.refresh()
+        await db.refresh(new_chat)
 
         return new_chat
 

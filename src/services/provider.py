@@ -12,14 +12,13 @@ class ProviderService:
     async def create_provider(self, provider: ProviderCreate):
         db = await get_db()
 
-        db.add(
-            models.Provider(
-                id=provider.id, name=provider.name, api_key=provider.api_key
-            )
+        provider = models.Provider(
+            id=provider.id, name=provider.name, api_key=provider.api_key
         )
+        db.add(provider)
 
         await db.commit()
-        await db.refresh()
+        await db.refresh(provider)
 
     def get_provider(id: str):
         db = await get_db()

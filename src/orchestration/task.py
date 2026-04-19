@@ -22,7 +22,6 @@ class BaseTask:
         self.db_object = db_object
 
         self.project = project_service.get_project_by_id(self.db_object.project_id)
-        self.root_dir = self.db_object.root_dir
         self.chat = chat_service.get_chat_by_id(self.db_object.chat_id)
         self.todos = ""  # AI can generate checklist etc.
         self.name = self.db_object.name
@@ -38,7 +37,7 @@ class BaseTask:
 
     def init_repo(self):
         try:
-            self.repo = git.Repo(self.root_dir)
+            self.repo = git.Repo(self.db_object.root_dir)
             assert not self.repo.bare
         except NoSuchPathError:
             print("Path is wrong!")
@@ -256,7 +255,3 @@ class BaseTask:
             # TODO: auto commit on completion
             #
         return
-
-
-# def create_task(project, root_dir, messages, chat=BaseChat):
-#    return BaseTask(project, root_dir, chat.from_messages(messages))

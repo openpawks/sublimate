@@ -2,6 +2,8 @@ from src.orchestration.project import BaseProject
 from src.backend import models
 from src.backend.database import get_db
 
+from src.schemas.project import ProjectCreate
+
 from sqlalchemy import select
 
 
@@ -47,29 +49,24 @@ class ProjectService:
             return None
 
     async def create_project_db(
-        self, name: str, user_id: int, root_dir: str, settings_yaml: str = ""
+        self,
+        project: ProjectCreate,
     ):
         """
         Create a new project in the database
-
-        Args:
-            name: name of the project
-            user_id: user that created the project
-                For now, in testing, this can be a single user application, so
-                when everything's created, there should just be one user,
-                just a dummy user with userid 0
-            root_dir: where the project will be created on the filesystem
-            settings_yaml: extra project settings
         """
         db = await get_db()
 
         new_project = models.Project(
-            name=name, user_id=user_id, root_dir=root_dir, settings_yaml=settings_yaml
+            name=project.name,
+            user_id=project.user_id,
+            root_dir=project.root_dir,
+            settings_yaml=project.settings_yaml or "",
         )
 
         db.add(new_project)
         await db.commit()
-        await db.refresh()
+        await db.refresh(new_project)
 
         return new_project
 

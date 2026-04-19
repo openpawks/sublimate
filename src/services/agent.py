@@ -75,7 +75,7 @@ class AgentService:
 
         db.add(new_agent)
         await db.commit()
-        await db.refresh()
+        await db.refresh(new_agent)
 
         return new_agent
 
