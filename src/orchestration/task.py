@@ -21,11 +21,9 @@ class BaseTask:
         """
         self.db_object = db_object
 
-        self.project = project_service.get_project_by_id(self.db_object.project_id)
-        self.chat = chat_service.get_chat_by_id(self.db_object.chat_id)
-        self.todos = ""  # AI can generate checklist etc.
+        self.project = project_service.get_base_project(self.db_object.project)
+        self.chat = chat_service.get_base_chat(self.db_object.chat)
         self.name = self.db_object.name
-        self.open = True
 
         self.task_tools = []
 
@@ -83,11 +81,11 @@ class BaseTask:
     # TASK SPECIFIC TOOLS
     def read_todos(self):
         """Read todo list"""
-        return self.todos
+        return self.db_object.todos
 
     def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
-        self.todos = todos
+        self.db_object.todos = todos
         return
 
     def close_task(self):
@@ -215,7 +213,9 @@ class BaseTask:
         return self.chat.was_last_updated_at()
 
     def close(self):
-        self.open = False
+        # TODO: use task_service to close task
+        pass
+        # self.open = False
 
     async def repeat_until_complete(self, max_iterations: int = 100):
         """
@@ -236,7 +236,7 @@ class BaseTask:
             agent = self.get_active_agent()
             output = await self.invoke_agent()
 
-            self.chat.add_message(
+            await self.chat.add_message(
                 # TODO: add id
                 role="assistant",
                 content=output.content,
@@ -247,7 +247,7 @@ class BaseTask:
             if iteration >= max_iterations:
                 # Safety: stop repeating if we hit max iterations
                 self.repeating_until_complete = False
-                self.chat.add_message(
+                await self.chat.add_message(
                     role="system",
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",

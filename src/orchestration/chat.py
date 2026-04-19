@@ -23,12 +23,12 @@ class BaseChat:
             for msg in self.db_object.messages
         ]
 
-    def add_message(self, *args, **kwargs):
+    async def add_message(self, *args, **kwargs):
         """
         Add message to the chat using message_service,
         message_service _should_ automatically update this chat.
         """
-        message_service.create_message(
+        await message_service.create_message(
             *args,
             **kwargs,
         )

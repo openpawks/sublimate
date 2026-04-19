@@ -1,5 +1,3 @@
-from src.orchestration.task import create_task
-
 from src.backend import models
 
 from src.services.task import task_service
@@ -92,7 +90,7 @@ class BaseProject:
         else:
             return self.init_repo()
 
-    def create_task(self, name=str, branches_from="dev", settings_yaml=""):
+    async def create_task(self, name=str, branches_from="dev", settings_yaml=""):
         """
         Create a task, calling task_service to create task, but automatically set
         root_dir to the worktree root & automatically set project to this project's id
@@ -115,7 +113,7 @@ class BaseProject:
         )
 
         # create new worktree
-        task = task_service.create_task(
+        task = await task_service.create_task(
             task=TaskCreate(
                 name=name,
                 project_id=self.db_object.id,
@@ -125,15 +123,3 @@ class BaseProject:
         )
 
         return task
-
-    def load_task_from_messages(self, messages, id):
-        if self.get_task_by_id(id):
-            raise ValueError(f"Task #{id} already exists!")
-            return
-
-        new_task = create_task(self, messages)
-
-        new_task.id = id
-        self.tasks[id] = new_task
-
-        return new_task

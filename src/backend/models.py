@@ -90,6 +90,8 @@ class Task(Base):
         back_populates="task", cascade="all, delete-orphan"
     )
 
+    todos: Mapped[str] = mapped_column(String(512), default="")
+
     root_dir: Mapped[str] = directory()
     open: Mapped[str] = mapped_column(Boolean, default=True)
 
