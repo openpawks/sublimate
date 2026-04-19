@@ -2,9 +2,9 @@ from src.orchestration.project import BaseProject
 from src.db import models
 from src.db.database import get_db
 
-from src.schemas.project import ProjectCreate
+from src.schemas.project import ProjectCreate, ProjectUpdate
 
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 
 
 class ProjectService:
@@ -32,7 +32,7 @@ class ProjectService:
 
         return self.projects_in_memory.get(db_object.id)
 
-    async def get_project_by_id(self, id: int) -> BaseProject:
+    async def get_project_by_id(self, id: int) -> BaseProject | None:
         """
         Get project by id, (BaseProject object)
 
@@ -41,12 +41,33 @@ class ProjectService:
         """
         db = await get_db()
 
-        project_db = await db.execute(select(models.Project.id == id)).scalars().first()
+        result = await db.execute(select(models.Project).where(models.Project.id == id))
+        project_db = result.scalars().first()
 
         if project_db:
             return self.get_base_project(project_db)
         else:
             return None
+
+    async def get_projects_by_user(self, user_id: int) -> list[BaseProject]:
+        """
+        Get all projects for a user
+        """
+        db = await get_db()
+        result = await db.execute(
+            select(models.Project).where(models.Project.user_id == user_id)
+        )
+        projects = result.scalars().all()
+        return [self.get_base_project(project) for project in projects]
+
+    async def get_all_projects(self) -> list[BaseProject]:
+        """
+        Get all projects
+        """
+        db = await get_db()
+        result = await db.execute(select(models.Project))
+        projects = result.scalars().all()
+        return [self.get_base_project(project) for project in projects]
 
     async def create_project_db(
         self,
@@ -70,12 +91,57 @@ class ProjectService:
 
         return new_project
 
-    def create_project(self, *args, **kwargs):
+    async def create_project(self, project: ProjectCreate):
         """
         Helper function to create a project
         """
-        project_obj = await self.create_project_db(*args, **kwargs)
+        project_obj = await self.create_project_db(project)
         return await self.get_base_project(project_obj)
+
+    async def update_project(
+        self, id: int, project_update: ProjectUpdate
+    ) -> BaseProject | None:
+        """
+        Update an existing project
+        """
+        db = await get_db()
+
+        result = await db.execute(select(models.Project).where(models.Project.id == id))
+        project_db = result.scalars().first()
+        if not project_db:
+            return None
+
+        update_data = project_update.dict(exclude_unset=True)
+
+        if update_data:
+            await db.execute(
+                update(models.Project)
+                .where(models.Project.id == id)
+                .values(**update_data)
+            )
+            await db.commit()
+            await db.refresh(project_db)
+
+        return self.get_base_project(project_db)
+
+    async def delete_project(self, id: int) -> bool:
+        """
+        Delete a project by id
+        """
+        db = await get_db()
+
+        result = await db.execute(select(models.Project).where(models.Project.id == id))
+        project_db = result.scalars().first()
+        if not project_db:
+            return False
+
+        await db.execute(delete(models.Project).where(models.Project.id == id))
+        await db.commit()
+
+        if id in self.projects_in_memory:
+            del self.projects_in_memory[id]
+
+        return True
 
 
 project_service = ProjectService()

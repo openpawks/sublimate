@@ -33,7 +33,7 @@ class WorkerAgent:
         """
         Create the agent object, with tools and such
         """
-        # TODO: add tool retry middleware by default
+        # NOTE: tool retry middleware not yet implemented
         # - also add tools, unsure how current tools will integrate with this
         self.agent = create_agent(model=self.model, system_prompt=self.prompt, **kwargs)
 

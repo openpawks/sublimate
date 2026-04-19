@@ -5,7 +5,7 @@ from datetime import datetime, UTC
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Integer, String, DateTime, ForeignKey, Boolean, Table, Column
 
-from database import Base
+from .database import Base
 
 from enum import Enum
 

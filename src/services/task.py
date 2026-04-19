@@ -4,14 +4,26 @@ from src.db.database import get_db
 
 from src.services.project import project_service
 
-from src.schemas.task import TaskCreate
+from src.schemas.task import TaskCreate, TaskUpdate
 
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 
 
 class TaskService:
     def __init__(self):
         self.tasks_in_memory = {}
+
+    @staticmethod
+    def _is_filesafe(name: str) -> bool:
+        """
+        Check if a string is safe for use as a filename/branch name.
+        Allows alphanumeric, hyphens, underscores, dots, no spaces or slashes.
+        """
+        import re
+
+        # Allow alphanumeric, hyphen, underscore, dot
+        pattern = r"^[a-zA-Z0-9_.-]+$"
+        return bool(re.match(pattern, name))
 
     def get_base_task_by_id(self, id: int):
         """
@@ -36,7 +48,7 @@ class TaskService:
 
         return self.tasks_in_memory.get(db_object.id)
 
-    def get_task_by_id(self, id: int) -> BaseTask:
+    async def get_task_by_id(self, id: int) -> BaseTask | None:
         """
         Get task object by id (BaseTask object)
 
@@ -45,12 +57,33 @@ class TaskService:
         """
         db = await get_db()
 
-        task_db = await db.execute(select(models.Task.id == id)).scalars().first()
+        result = await db.execute(select(models.Task).where(models.Task.id == id))
+        task_db = result.scalars().first()
 
         if task_db:
             return self.get_base_task(task_db)
         else:
             return None
+
+    async def get_tasks_by_project(self, project_id: int) -> list[BaseTask]:
+        """
+        Get all tasks for a project
+        """
+        db = await get_db()
+        result = await db.execute(
+            select(models.Task).where(models.Task.project_id == project_id)
+        )
+        tasks = result.scalars().all()
+        return [self.get_base_task(task) for task in tasks]
+
+    async def get_all_tasks(self) -> list[BaseTask]:
+        """
+        Get all tasks
+        """
+        db = await get_db()
+        result = await db.execute(select(models.Task))
+        tasks = result.scalars().all()
+        return [self.get_base_task(task) for task in tasks]
 
     async def create_task_db(self, task: TaskCreate):
         """
@@ -58,18 +91,22 @@ class TaskService:
         """
         db = await get_db()
 
-        project = project_service.get_project_by_id(task.project_id)
+        project = await project_service.get_project_by_id(task.project_id)
         if not project:
             # project doesn't exist
-            return
+            return None
 
-        # TODO: verify name is filesafe
+        if not self._is_filesafe(task.name):
+            raise ValueError(
+                f"Task name '{task.name}' is not filesafe. Only alphanumeric, underscores, hyphens, and dots allowed."
+            )
 
         new_task = models.Task(
             name=task.name,
             project_id=task.project_id,
             root_dir=task.root_dir,
             settings_yaml=task.settings_yaml,
+            todos=task.todos or "",
         )
 
         db.add(new_task)
@@ -79,12 +116,55 @@ class TaskService:
 
         return new_task
 
-    async def create_task(self, *args, **kwargs):
+    async def create_task(self, task: TaskCreate):
         """
         Helper function to create a task
         """
-        task_obj = await self.create_task_db(*args, **kwargs)
-        return await self.get_base_task(task_obj)
+        task_obj = await self.create_task_db(task)
+        if task_obj:
+            return await self.get_base_task(task_obj)
+        return None
+
+    async def update_task(self, id: int, task_update: TaskUpdate) -> BaseTask | None:
+        """
+        Update an existing task
+        """
+        db = await get_db()
+
+        result = await db.execute(select(models.Task).where(models.Task.id == id))
+        task_db = result.scalars().first()
+        if not task_db:
+            return None
+
+        update_data = task_update.dict(exclude_unset=True)
+
+        if update_data:
+            await db.execute(
+                update(models.Task).where(models.Task.id == id).values(**update_data)
+            )
+            await db.commit()
+            await db.refresh(task_db)
+
+        return self.get_base_task(task_db)
+
+    async def delete_task(self, id: int) -> bool:
+        """
+        Delete a task by id
+        """
+        db = await get_db()
+
+        result = await db.execute(select(models.Task).where(models.Task.id == id))
+        task_db = result.scalars().first()
+        if not task_db:
+            return False
+
+        await db.execute(delete(models.Task).where(models.Task.id == id))
+        await db.commit()
+
+        if id in self.tasks_in_memory:
+            del self.tasks_in_memory[id]
+
+        return True
 
 
 task_service = TaskService()
