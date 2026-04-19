@@ -11,7 +11,7 @@ graph TB
     subgraph "User Interface Layer"
         A[Configuration Files] --> B[API/CLI]
     end
-    
+
     subgraph "Orchestration Layer"
         C[create_composer Factory] --> D[BaseComposer]
         D --> E[HeartbeatComposer]
@@ -19,27 +19,27 @@ graph TB
         E --> G[Heartbeat Scheduler]
         F --> H[Pipeline Engine]
     end
-    
+
     subgraph "Agent Layer"
-        I[BaseAgent Registry] --> J[Agent 1: Coder]
+        I[WorkerAgent Registry] --> J[Agent 1: Coder]
         I --> K[Agent 2: Reviewer]
         I --> L[Agent 3: Tester]
         J --> M[Tools]
         K --> M
         L --> M
     end
-    
+
     subgraph "Execution Layer"
         N[LangChain Integration] --> O[LLM Models]
         P[Tool Execution] --> Q[File System]
         P --> R[External APIs]
     end
-    
+
     subgraph "Persistence Layer"
         S[State Files] --> T[Execution History]
         U[Configuration] --> V[Agent Prompts]
     end
-    
+
     B -.-> C
     G -.-> I
     H -.-> I
@@ -48,7 +48,7 @@ graph TB
     J -.-> S
     K -.-> S
     L -.-> S
-    
+
     style D fill:#f9f,stroke:#333,stroke-width:3px
 ```
 
@@ -87,7 +87,7 @@ sequenceDiagram
     participant A as Agents
     participant T as Tools
     participant L as LLM
-    
+
     U->>C: Define sublimate-compose.yml
     U->>F: create_composer(agent_home, tools)
     F->>C: Load configuration
@@ -96,7 +96,7 @@ sequenceDiagram
     O->>O: init() models & agents
     O->>A: Create agent instances
     A->>A: Load prompts & context
-    
+
     loop Scheduled Execution
         O->>A: Invoke agent
         A->>L: Format messages with context
@@ -106,7 +106,7 @@ sequenceDiagram
         A-->>O: Agent output
         O->>O: Save state
     end
-    
+
     O-->>U: Execution results
 ```
 
@@ -117,8 +117,8 @@ classDiagram
     class BaseTask {
         +__init__()
     }
-    
-    class BaseAgent {
+
+    class WorkerAgent {
         +name: str
         +prompt: str
         +heartbeat: str
@@ -133,17 +133,17 @@ classDiagram
         +add_dependency(agent)
         +run(**kwargs)
     }
-    
+
     class BaseComposer {
         +agent_home: Path
         +root_folder: Path
-        +agents: Dict[str, BaseAgent]
+        +agents: Dict[str, WorkerAgent]
         +models: Dict[str, Model]
         +tools: Dict[str, Callable]
         +data: Dict
         +__init__(agent_home, tools, root_folder)
         +init_chat_models()
-        +init_agents(Agent=BaseAgent)
+        +init_agents(Agent=WorkerAgent)
         +init()
         +get_agent(name)
         +schedule_agent(name)
@@ -152,7 +152,7 @@ classDiagram
         +up()
         +down()
     }
-    
+
     class Heartbeat {
         +cron: str
         +callback: Callable
@@ -166,7 +166,7 @@ classDiagram
         +start()
         +stop()
     }
-    
+
     class HeartbeatComposer {
         +heartbeats: Dict[str, Heartbeat]
         +__init__(*args, **kwargs)
@@ -181,7 +181,7 @@ classDiagram
         +up()
         +down()
     }
-    
+
     class PipelineComposer {
         +proceses: Dict
         +pipeline: Dict
@@ -191,18 +191,18 @@ classDiagram
         +up()
         +down()
     }
-    
+
     class create_composer {
         +create_composer(**kwargs)
     }
-    
-    BaseTask <|-- BaseAgent
+
+    BaseTask <|-- WorkerAgent
     BaseComposer <|-- HeartbeatComposer
     BaseComposer <|-- PipelineComposer
     HeartbeatComposer *-- Heartbeat
     create_composer --> HeartbeatComposer
     create_composer --> PipelineComposer
-    BaseComposer *-- BaseAgent
+    BaseComposer *-- WorkerAgent
 ```
 
 ## Configuration Ecosystem
@@ -232,17 +232,17 @@ graph TB
     A[Global Configuration<br/>sublimate-compose.yml] --> B[Agent Definitions]
     A --> C[Model Definitions]
     A --> D[Execution Strategy]
-    
+
     B --> E[Individual Agent<br/>{name}.md]
     D --> F[Heartbeat Instructions<br/>heartbeats/{name}.md]
-    
+
     G[Project Context<br/>AGENTS.md, README.md] --> H[Agent Context]
     I[External Docs<br/>docs/*] --> H
-    
+
     E --> J[Agent Instance]
     F --> J
     H --> J
-    
+
     style A fill:#e1f5fe,stroke:#01579b
     style E fill:#f3e5f5,stroke:#4a148c
     style F fill:#e8f5e8,stroke:#1b5e20
@@ -282,7 +282,7 @@ graph LR
     G -->|Yes| H[Deploy]
     G -->|No| I[Fix Issues]
     I --> F
-    
+
     style A fill:#ffebee,stroke:#c62828
     style H fill:#e8f5e8,stroke:#2e7d32
     style I fill:#fff3e0,stroke:#ef6c00
@@ -296,31 +296,31 @@ graph TB
     subgraph "Tool Registry"
         A[Tool Dictionary] --> B[name: function]
     end
-    
+
     subgraph "Tool Categories"
         C[File Operations] --> D[read_file]
         C --> E[write_file]
         C --> F[list_files]
-        
+
         G[Code Operations] --> H[run_tests]
         G --> I[analyze_code]
         G --> J[format_code]
-        
+
         K[System Operations] --> L[execute_command]
         K --> M[check_status]
         K --> N[deploy]
-        
+
         O[Communication] --> P[create_issue]
         O --> Q[send_notification]
         O --> R[log_event]
     end
-    
+
     subgraph "Security Layer"
         S[Permission Check] --> T[Path Validation]
         S --> U[Resource Limits]
         S --> V[Audit Logging]
     end
-    
+
     B -.-> C
     B -.-> G
     B -.-> K
@@ -337,10 +337,10 @@ def safe_write_file(path: str, content: str) -> str:
     """Write content to file with security checks"""
     validate_path(path, allowed_patterns=["./src/**", "./tests/**"])
     check_permissions(path, "write")
-    
+
     with open(path, 'w') as f:
         f.write(content)
-    
+
     audit_log("file_write", path=path, size=len(content))
     return f"Written {len(content)} bytes to {path}"
 
@@ -356,7 +356,7 @@ agents:
   coder:
     model: default
     tools: [write_file, read_file, run_tests]
-  
+
   reviewer:
     model: default
     tools: [read_file, create_issue]  # No write access
@@ -373,23 +373,23 @@ graph TB
         A --> D[Tool Executions]
         A --> E[Output Results]
     end
-    
+
     subgraph "State Serialization"
         F[State Object] --> G[JSON/YAML]
         G --> H[File Storage]
     end
-    
+
     subgraph "State Files"
         I[states/] --> J[agent_YYYYMMDD_HHMMSS.md]
         I --> K[agent_YYYYMMDD_HHMMSS.json]
     end
-    
+
     subgraph "State Recovery"
         L[Load State] --> M[Recreate Context]
         L --> N[Continue Execution]
         L --> O[Error Analysis]
     end
-    
+
     B --> F
     C --> F
     D --> F
@@ -397,7 +397,7 @@ graph TB
     H --> I
     J --> L
     K --> L
-    
+
     style F fill:#f3e5f5,stroke:#4a148c
     style I fill:#e8f5e8,stroke:#1b5e20
 ```
@@ -449,25 +449,25 @@ graph TB
         C[Missing Sections] --> D[Validation Error]
         E[Invalid Paths] --> F[File Error]
     end
-    
+
     subgraph "Layer 2: Initialization Errors"
         G[Model Unavailable] --> H[Connection Error]
         I[Agent Files Missing] --> J[Load Error]
         K[Tool Registration Failed] --> L[Integration Error]
     end
-    
+
     subgraph "Layer 3: Execution Errors"
         M[LLM Timeout] --> N[Timeout Error]
         O[Tool Failure] --> P[Runtime Error]
         Q[Dependency Deadlock] --> R[Deadlock Error]
     end
-    
+
     subgraph "Layer 4: Recovery Strategies"
         S[Retry Logic] --> T[Exponential Backoff]
         U[Fallback Agents] --> V[Graceful Degradation]
         W[State Checkpoint] --> X[Resume from Checkpoint]
     end
-    
+
     B --> Y[User Notification]
     D --> Y
     F --> Y
@@ -480,7 +480,7 @@ graph TB
     T --> AB[Continued Operation]
     V --> AB
     X --> AB
-    
+
     style Y fill:#ffebee,stroke:#c62828
     style Z fill:#fff3e0,stroke:#ef6c00
     style AA fill:#e3f2fd,stroke:#1565c0
@@ -505,7 +505,7 @@ class ResilientComposer(BaseComposer):
                 # Log and try fallback agent
                 logger.error(f"Agent {agent_name} failed: {e}")
                 return await self.fallback_execution(message)
-    
+
     async def fallback_execution(self, message):
         """Execute with simplified fallback agent"""
         fallback_agent = create_fallback_agent()
@@ -529,19 +529,19 @@ xychart-beta
 
 #### 1. Lazy Loading
 ```python
-class OptimizedBaseAgent(BaseAgent):
+class OptimizedWorkerAgent(WorkerAgent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._prompt_loaded = False
         self._context_loaded = False
-    
+
     @property
     def prompt(self):
         if not self._prompt_loaded:
             self.load_file("prompt", self.agent_file_paths[0][1])
             self._prompt_loaded = True
         return self._prompt
-    
+
     def load_context_on_demand(self):
         if not self._context_loaded:
             self.load_files_for(self.context, self.context_files)
@@ -557,20 +557,20 @@ class CachedComposer(BaseComposer):
         self._model_cache = {}
         self._config_cache = {}
         self._cache_timestamps = {}
-    
+
     def init_chat_model(self, model, model_data):
         cache_key = f"{model}:{hash(str(model_data))}"
-        
+
         if cache_key in self._model_cache:
             # Check if cache is still valid
             if time.time() - self._cache_timestamps[cache_key] < self.cache_ttl:
                 return self._model_cache[cache_key]
-        
+
         # Create and cache new model
         model_instance = super().init_chat_model(model, model_data)
         self._model_cache[cache_key] = model_instance
         self._cache_timestamps[cache_key] = time.time()
-        
+
         return model_instance
 ```
 
@@ -582,16 +582,16 @@ class PooledComposer(BaseComposer):
         self.pool_size = pool_size
         self.model_pool = []
         self.pool_lock = asyncio.Lock()
-    
+
     async def get_model_from_pool(self, model_name):
         async with self.pool_lock:
             if not self.model_pool:
                 # Create new model instance
                 model = self.models[model_name]
                 self.model_pool.append(model)
-            
+
             return self.model_pool.pop()
-    
+
     async def return_model_to_pool(self, model):
         async with self.pool_lock:
             if len(self.model_pool) < self.pool_size:
@@ -608,25 +608,25 @@ graph TB
         C[Path Sanitization] --> D[Traversal Prevention]
         E[Secret Management] --> F[Encrypted Storage]
     end
-    
+
     subgraph "Layer 2: Runtime Security"
         G[Tool Sandboxing] --> H[Resource Limits]
         I[Input Validation] --> J[Output Sanitization]
         K[Permission Checks] --> L[Access Control]
     end
-    
+
     subgraph "Layer 3: Communication Security"
         M[API Encryption] --> N[TLS/SSL]
         O[Authentication] --> P[Authorization]
         Q[Audit Logging] --> R[Tamper Detection]
     end
-    
+
     subgraph "Layer 4: Monitoring & Response"
         S[Anomaly Detection] --> T[Alerting]
         U[Incident Response] --> V[Forensic Analysis]
         W[Patch Management] --> X[Vulnerability Scanning]
     end
-    
+
     B --> Y[Secure Execution]
     D --> Y
     F --> Y
@@ -639,7 +639,7 @@ graph TB
     T --> AB[Proactive Defense]
     V --> AB
     X --> AB
-    
+
     style Y fill:#f3e5f5,stroke:#4a148c
     style Z fill:#e8f5e8,stroke:#1b5e20
     style AA fill:#e3f2fd,stroke:#1565c0
@@ -652,11 +652,11 @@ class SecureComposer(BaseComposer):
     def __init__(self, *args, security_context=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.security_context = security_context or SecurityContext()
-    
-    def init_agent(self, agent, agent_data, Agent=BaseAgent):
+
+    def init_agent(self, agent, agent_data, Agent=WorkerAgent):
         # Apply security policies
         agent_data = self.security_context.apply_policies(agent_data)
-        
+
         # Create agent with security context
         agent_instance = SecureAgent(
             agent,
@@ -666,26 +666,26 @@ class SecureComposer(BaseComposer):
             str(self.root_folder),
             security_context=self.security_context
         )
-        
+
         self.agents[agent] = agent_instance
         self.agents[agent].load_agent()
 
-class SecureAgent(BaseAgent):
+class SecureAgent(WorkerAgent):
     def __init__(self, *args, security_context, **kwargs):
         super().__init__(*args, **kwargs)
         self.security_context = security_context
-    
+
     def invoke(self, message_history, **kwargs):
         # Validate input
         self.security_context.validate_input(message_history)
-        
+
         # Execute with security monitoring
         with self.security_context.monitor_execution():
             result = super().invoke(message_history, **kwargs)
-        
+
         # Validate output
         self.security_context.validate_output(result)
-        
+
         return result
 ```
 
@@ -783,11 +783,11 @@ class InstrumentedComposer(BaseComposer):
         self.metrics = metrics_client or MetricsClient()
         self.execution_times = {}
         self.error_counts = {}
-    
-    def init_agent(self, agent, agent_data, Agent=BaseAgent):
+
+    def init_agent(self, agent, agent_data, Agent=WorkerAgent):
         # Wrap agent methods with instrumentation
         agent_instance = super().init_agent(agent, agent_data, Agent)
-        
+
         # Instrument invoke method
         original_invoke = agent_instance.invoke
         def instrumented_invoke(message_history, **kwargs):
@@ -795,7 +795,7 @@ class InstrumentedComposer(BaseComposer):
             try:
                 result = original_invoke(message_history, **kwargs)
                 duration = time.time() - start_time
-                
+
                 # Record metrics
                 self.metrics.record_timing(
                     "agent_invoke_duration",
@@ -806,7 +806,7 @@ class InstrumentedComposer(BaseComposer):
                     "agent_invoke_success",
                     tags={"agent": agent}
                 )
-                
+
                 return result
             except Exception as e:
                 self.metrics.increment_counter(
@@ -814,7 +814,7 @@ class InstrumentedComposer(BaseComposer):
                     tags={"agent": agent, "error": type(e).__name__}
                 )
                 raise
-        
+
         agent_instance.invoke = instrumented_invoke
         return agent_instance
 ```

@@ -26,15 +26,15 @@ class TaskService:
         """
         Load BaseTask into memory
         """
-        task = self.tasks_in_memory.get(id)
+        task = self.tasks_in_memory.get(db_object.id)
         if task:
             return task
 
-        self.tasks_in_memory[id] = BaseTask(
+        self.tasks_in_memory[db_object.id] = BaseTask(
             db_object=db_object,
         )
 
-        return self.tasks_in_memory.get(id)
+        return self.tasks_in_memory.get(db_object.id)
 
     def get_task_by_id(self, id: int) -> BaseTask:
         """

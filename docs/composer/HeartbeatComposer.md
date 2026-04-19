@@ -817,7 +817,7 @@ async def test_heartbeat_execution_flow():
 
 - [Heartbeat Documentation](./Heartbeat.md)
 - [BaseComposer Documentation](./BaseComposer.md)
-- [BaseAgent Documentation](./BaseAgent.md)
+- [WorkerAgent Documentation](./WorkerAgent.md)
 - [Composer Overview](../composer.md)
 
 ## Summary

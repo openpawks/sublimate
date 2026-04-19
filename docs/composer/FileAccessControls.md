@@ -63,7 +63,7 @@ If a file path matches **no patterns**, access is **denied** by default.
 
 ### Agent Initialization
 
-When a composer parses `sublimate-compose.yml`, it extracts the file access patterns for each agent and passes them to the `BaseAgent` constructor. The agent stores these patterns and provides a `check_file_access(file_path, mode)` method that evaluates permissions.
+When a composer parses `sublimate-compose.yml`, it extracts the file access patterns for each agent and passes them to the `WorkerAgent` constructor. The agent stores these patterns and provides a `check_file_access(file_path, mode)` method that evaluates permissions.
 
 ### Tool Wrapping
 

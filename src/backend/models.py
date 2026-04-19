@@ -46,8 +46,8 @@ def created_at():
     return mapped_column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
 
-def message_content():
-    return mapped_column(String(4096))
+def message_content(*args, **kwargs):
+    return mapped_column(String(4096), *args, **kwargs)
 
 
 task_to_agent = Table(
@@ -172,8 +172,10 @@ class Agent(Base):
     provider: Mapped[Provider] = relationship(back_populates="agents")
 
     settings_yaml: Mapped[str] = settings_yaml()
-    prompt: Mapped[str] = message_content()
-    heartbeat_prompt: Mapped[str] = message_content()  # could be half, but eh.
+    prompt: Mapped[str] = message_content(default="")
+    heartbeat_prompt: Mapped[str] = message_content(
+        default=""
+    )  # could be half, but eh.
 
     tasks: Mapped[list[Task]] = relationship(
         secondary=task_to_agent, back_populates="tasks"

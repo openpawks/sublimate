@@ -646,7 +646,7 @@ async def test_complete_pipeline_flow():
 
 - [BaseComposer Documentation](./BaseComposer.md)
 - [HeartbeatComposer Documentation](./HeartbeatComposer.md)
-- [BaseAgent Documentation](./BaseAgent.md)
+- [WorkerAgent Documentation](./WorkerAgent.md)
 - [Composer Overview](../composer.md)
 
 ## Summary

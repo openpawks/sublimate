@@ -22,15 +22,15 @@ class ChatService:
         """
         Load BaseChat into memory
         """
-        chat = self.chats_in_memory.get(id)
+        chat = self.chats_in_memory.get(db_object.id)
         if chat:
             return chat
 
-        self.chats_in_memory[id] = BaseChat(
+        self.chats_in_memory[db_object.id] = BaseChat(
             db_object=db_object,
         )
 
-        return self.chats_in_memory.get(id)
+        return self.chats_in_memory.get(db_object.id)
 
     async def get_chat_by_id(self, id: int) -> BaseChat:
         """

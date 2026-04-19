@@ -92,7 +92,11 @@ class BaseProject:
         else:
             return self.init_repo()
 
-    def create_task(self, name=str, settings_yaml=""):
+    def create_task(self, name=str, branches_from="dev", settings_yaml=""):
+        """
+        Create a task, calling task_service to create task, but automatically set
+        root_dir to the worktree root & automatically set project to this project's id
+        """
         # TODO: version control every time a new task is created
         # - task permission control here!
         # WARNING: agents might be able to still write and
@@ -102,15 +106,25 @@ class BaseProject:
         # TODO: verify file/branch safe name or convert to
         # WARNING: no file/branch safe name rn, please implement
 
-        # ISSUE: UNFINISHED
-
         self.get_repo().git.worktree(
             "add",
             "-b",
+            f"{name}",
+            f"sublimate/{name}",
+            f"{branches_from}",  # or where-ever we are branching from
         )
 
         # create new worktree
-        task_service.create_task(task=TaskCreate())
+        task = task_service.create_task(
+            task=TaskCreate(
+                name=name,
+                project_id=self.db_object.id,
+                root_dir=os.path.join(self.db_object.root_dir, "sublimate", f"{name}"),
+                settings_yaml=settings_yaml,
+            )
+        )
+
+        return task
 
     def load_task_from_messages(self, messages, id):
         if self.get_task_by_id(id):

@@ -10,7 +10,7 @@ class ProviderBase(BaseModel):
         max_length=50,
         description="Actual name of the provider, eg 'deepseek', 'openai', 'ollama' or similar",
     )
-    api_key: str(min_length=1, max_length=50)
+    api_key: str(min_length=0, max_length=50)
 
 
 class ProviderCreate(ProviderBase):

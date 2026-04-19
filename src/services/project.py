@@ -20,17 +20,17 @@ class ProjectService:
         """
         return self.projects_in_memory.get(id)
 
-    def get_mem_project(self, db_object: models.Project):
+    def get_base_project(self, db_object: models.Project):
         """
         Load BaseProject into memory
         """
-        project = self.projects_in_memory.get(id)
+        project = self.projects_in_memory.get(db_object.id)
         if project:
             return project
 
-        self.projects_in_memory[id] = BaseProject(db_object=db_object)
+        self.projects_in_memory[db_object.id] = BaseProject(db_object=db_object)
 
-        return self.projects_in_memory.get(id)
+        return self.projects_in_memory.get(db_object.id)
 
     async def get_project_by_id(self, id: int) -> BaseProject:
         """
@@ -44,7 +44,7 @@ class ProjectService:
         project_db = await db.execute(select(models.Project.id == id)).scalars().first()
 
         if project_db:
-            return self.get_mem_project(project_db)
+            return self.get_base_project(project_db)
         else:
             return None
 

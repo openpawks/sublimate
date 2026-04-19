@@ -1,8 +1,10 @@
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
+from src.backend import models
 
-class BaseAgent:
+
+class WorkerAgent:
     def __init__(
         self,
         model,
@@ -11,7 +13,7 @@ class BaseAgent:
         heartbeat_prompt: str = "",
     ):
         """
-        An agent that tasks will call upon
+        An agent that tasks will call upon. This agent will write files and run commands and such
 
         Args:
             model: langchain chat model
@@ -47,15 +49,28 @@ class BaseAgent:
         )
 
 
+class ChatAgent:
+    """
+    This will be an agent that you can chat to in a chat window,
+    and it'll be able to create tasks, close tasks, etc.
+    send messages to tasks.
+
+    Maybe this is redundant
+    """
+
+    pass
+
+
 class AgentFactory:
     def __init__(
         self,
-        provider_name: str,  # provider name, eg, deepseek
-        model_name: str,
-        name: str = "",  # okay, technically, we _dont_ need a name.
-        prompt: str = "",
-        heartbeat_prompt: str = "",
-        agent_type=BaseAgent,
+        db_object: models.Agent,
+        # provider_name: str,  # provider name, eg, deepseek
+        # model_name: str,
+        # name: str = "",  # okay, technically, we _dont_ need a name.
+        # prompt: str = "",
+        # heartbeat_prompt: str = "",
+        # agent_type=WorkerAgent,
         **kwargs,
     ):
         """
@@ -72,13 +87,14 @@ class AgentFactory:
             agent_type: type of agent it spawns
         """
 
-        self.name = name
-        self.provider_name = provider_name
-        self.model_name = model_name
-        self.prompt = prompt
-        self.heartbeat_prompt = heartbeat_prompt
-        self.kwargs = kwargs
-        self.agent_type = agent_type
+        self.db_object = db_object
+
+        self.name = self.db_object.name
+        self.provider_name = self.db_object.provider_name
+        self.model_name = self.db_object.model_name
+        self.prompt = self.db_object.prompt
+        self.heartbeat_prompt = self.db_object.heartbeat_prompt
+        self.kwargs = self.db_object.kwargs
 
         self.model = None
 
@@ -89,15 +105,15 @@ class AgentFactory:
             **self.kwargs.get("model", {}),
         )
 
-    def create(self):
+    def create_worker(self):
         """
-        Create a BaseAgent object, using some configuration settings
+        Create a WorkerAgent object, using some configuration settings
         from this AgentFactory
         """
         if not self.model:
             self.init_chat_model()
 
-        return self.agent_type(
+        return WorkerAgent(
             model=self.model,
             name=self.name,
             prompt=self.prompt,

@@ -77,7 +77,7 @@ graph TD
     A[BaseTask] --> B[AgentTask]
     A --> C[HeartbeatTask]
     A --> D[PipelineTask]
-    B --> E[BaseAgent]
+    B --> E[WorkerAgent]
     C --> F[Heartbeat]
     D --> G[PipelineComposer]
 
@@ -170,7 +170,7 @@ def test_task_error_handling():
 
 `BaseTask` can integrate with:
 
-1. **Agent System**: Tasks executed by `BaseAgent` instances
+1. **Agent System**: Tasks executed by `WorkerAgent` instances
 2. **Scheduler**: Tasks scheduled via `Heartbeat` instances
 3. **Pipeline**: Tasks chained in `PipelineComposer` workflows
 4. **Monitoring**: Task status tracked in monitoring systems
@@ -254,7 +254,7 @@ When extending `BaseTask` in existing code:
 
 ## Related Documentation
 
-- [BaseAgent Documentation](./BaseAgent.md)
+- [WorkerAgent Documentation](./WorkerAgent.md)
 - [Heartbeat Documentation](./Heartbeat.md)
 - [PipelineComposer Documentation](./PipelineComposer.md)
 - [Composer Overview](../composer.md)

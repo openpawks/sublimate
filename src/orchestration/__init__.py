@@ -11,7 +11,7 @@ from .composer import (
     PipelineComposer,
 )
 
-from .agent import BaseAgent
+from .agent import WorkerAgent
 
 from .heartbeat import Heartbeat
 
@@ -31,7 +31,7 @@ from .tools import (
 
 __all__ = [
     "BaseTask",
-    "BaseAgent",
+    "WorkerAgent",
     "BaseComposer",
     "Heartbeat",
     "HeartbeatComposer",

@@ -9,7 +9,7 @@ The Composer module is the core orchestration engine of the Sublimate system, pr
 ```mermaid
 graph TB
     subgraph "Core Classes"
-        A[BaseTask] --> B[BaseAgent]
+        A[BaseTask] --> B[WorkerAgent]
         B --> C[BaseComposer]
         C --> D[HeartbeatComposer]
         C --> E[PipelineComposer]
@@ -35,7 +35,7 @@ graph TB
 | Class | Purpose | Status | Documentation |
 |-------|---------|--------|---------------|
 | **BaseTask** | Foundation for task handling | Minimal implementation | [BaseTask.md](./BaseTask.md) |
-| **BaseAgent** | Individual AI agent with tools and context | Complete | [BaseAgent.md](./BaseAgent.md) |
+| **WorkerAgent** | Individual AI agent with tools and context | Complete | [WorkerAgent.md](./WorkerAgent.md) |
 | **BaseComposer** | Core orchestration engine | Complete | [BaseComposer.md](./BaseComposer.md) |
 | **Heartbeat** | Scheduled execution using cron | Complete | [Heartbeat.md](./Heartbeat.md) |
 | **HeartbeatComposer** | Manages heartbeat-scheduled agents | Complete | [HeartbeatComposer.md](./HeartbeatComposer.md) |
@@ -212,7 +212,7 @@ print(f"Heartbeat loaded: {bool(agent.heartbeat)}")
 
 ### 1. Reduce Context Size
 ```python
-class OptimizedAgent(BaseAgent):
+class OptimizedAgent(WorkerAgent):
     def format_message_history(self, message_history, **kwargs):
         # Limit context to essential files
         kwargs['include_context_files'] = False
@@ -284,7 +284,7 @@ pytest tests/test_composer.py --cov=src.orchestration.composer --cov-report=html
 
 ### Custom Agent Classes
 ```python
-class SpecializedAgent(BaseAgent):
+class SpecializedAgent(WorkerAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
@@ -325,7 +325,7 @@ class PluginComposer(BaseComposer):
 ### Configuration Migration
 ```python
 # Old way
-agent = BaseAgent("coder", "./agents", model, tools)
+agent = WorkerAgent("coder", "./agents", model, tools)
 
 # New way
 composer = create_composer(agent_home="./agents", tools=tools)

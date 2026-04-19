@@ -168,7 +168,7 @@ class BaseTask:
         if self.get_agent(agent_factory.name):
             print(f"{agent_factory.name} already assigned")
             return None
-        new_agent = agent_factory.create()
+        new_agent = agent_factory.create_worker()
         new_agent.task = self
         self.agents[new_agent.name] = new_agent
 

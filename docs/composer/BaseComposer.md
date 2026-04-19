@@ -50,7 +50,7 @@ class BaseComposer:
 
 1. **Configuration Loading**: Parse and validate `sublimate-compose.yml`
 2. **Model Management**: Initialize and manage LLM model instances
-3. **Agent Orchestration**: Create and manage `BaseAgent` instances
+3. **Agent Orchestration**: Create and manage `WorkerAgent` instances
 4. **Tool Distribution**: Provide tools to appropriate agents
 5. **Lifecycle Management**: Handle initialization and cleanup
 6. **Error Handling**: Validate configuration and handle initialization errors
@@ -69,7 +69,7 @@ class BaseComposer:
 |-----------|------|-------------|
 | `agent_home` | `Path` | Path to agent home directory |
 | `root_folder` | `Path` | Path to root folder for context |
-| `agents` | `Dict[str, BaseAgent]` | Registry of agent instances |
+| `agents` | `Dict[str, WorkerAgent]` | Registry of agent instances |
 | `models` | `Dict[str, LangChain Model]` | Registry of model instances |
 | `tools` | `Dict[str, Callable]` | Tool registry |
 | `data` | `Dict` | Parsed YAML configuration |
@@ -162,7 +162,7 @@ Initializes all chat models from configuration.
 2. Call `init_chat_model()` for each model
 3. Store models in `self.models` registry
 
-### `init_agents(Agent=BaseAgent)`
+### `init_agents(Agent=WorkerAgent)`
 
 Initializes all agents from configuration.
 
@@ -171,7 +171,7 @@ Initializes all agents from configuration.
 2. For each agent:
    - Get model reference from `self.models`
    - Get tools list from configuration
-   - Create `BaseAgent` instance
+   - Create `WorkerAgent` instance
    - Load agent files
    - Store in `self.agents` registry
 
@@ -190,7 +190,7 @@ self.init_agents()
 Retrieves an agent by name from the registry.
 
 **Parameters:** `name` - Agent name string
-**Returns:** `BaseAgent` instance or `None`
+**Returns:** `WorkerAgent` instance or `None`
 
 ### `schedule_agent(name)`
 
@@ -299,9 +299,9 @@ except KeyError as e:
 ### Custom Agent Class Integration
 
 ```python
-from src.orchestration.composer import BaseComposer, BaseAgent
+from src.orchestration.composer import BaseComposer, WorkerAgent
 
-class SpecializedAgent(BaseAgent):
+class SpecializedAgent(WorkerAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
@@ -352,13 +352,13 @@ def fetch_api_key_for_provider(self, provider: str) -> str:
 
 ## Agent Initialization Details
 
-### `init_agent(agent, agent_data, Agent=BaseAgent)`
+### `init_agent(agent, agent_data, Agent=WorkerAgent)`
 
 Initializes a single agent with tools and model.
 
 **Process:**
 ```python
-def init_agent(self, agent, agent_data, Agent=BaseAgent):
+def init_agent(self, agent, agent_data, Agent=WorkerAgent):
     self.agents[agent] = Agent(
         agent,
         self.agent_home,
@@ -487,7 +487,7 @@ class SecureBaseComposer(BaseComposer):
         super().__init__(*args, **kwargs)
         self.allowed_directories = allowed_directories or []
 
-    def init_agent(self, agent, agent_data, Agent=BaseAgent):
+    def init_agent(self, agent, agent_data, Agent=WorkerAgent):
         # Validate agent has access to allowed directories only
         if self.allowed_directories:
             agent_data['file_access'] = self.allowed_directories
@@ -626,7 +626,7 @@ class TemplatedBaseComposer(BaseComposer):
 
 ## Related Documentation
 
-- [BaseAgent Documentation](./BaseAgent.md)
+- [WorkerAgent Documentation](./WorkerAgent.md)
 - [HeartbeatComposer Documentation](./HeartbeatComposer.md)
 - [PipelineComposer Documentation](./PipelineComposer.md)
 - [Composer Overview](../composer.md)

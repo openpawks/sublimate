@@ -1,13 +1,13 @@
-# BaseAgent Class
+# WorkerAgent Class
 
 ## Overview
 
-The `BaseAgent` class is the core component of the Sublimate Composer system, representing individual AI agents that can interact with codebases, execute tasks, and collaborate with other agents. Each agent has its own prompt, tools, context, and execution capabilities.
+The `WorkerAgent` class is the core component of the Sublimate Composer system, representing individual AI agents that can interact with codebases, execute tasks, and collaborate with other agents. Each agent has its own prompt, tools, context, and execution capabilities.
 
 ## Class Definition
 
 ```python
-class BaseAgent:
+class WorkerAgent:
     def __init__(
         self,
         name: str,
@@ -23,7 +23,7 @@ class BaseAgent:
 
 ```mermaid
 graph TB
-    subgraph "BaseAgent Components"
+    subgraph "WorkerAgent Components"
         A[Agent Name] --> B[Prompt File]
         A --> C[Heartbeat File]
         A --> D[LangChain Model]
@@ -122,7 +122,7 @@ Loads agent prompt, heartbeat, and context files.
 **Flow:**
 ```mermaid
 sequenceDiagram
-    participant A as BaseAgent
+    participant A as WorkerAgent
     participant F as File System
     participant C as Context
 
@@ -183,7 +183,7 @@ Asynchronously invokes the agent with formatted message history.
 
 Adds another agent as a dependency.
 
-**Parameters:** `agent` - Another `BaseAgent` instance
+**Parameters:** `agent` - Another `WorkerAgent` instance
 **Returns:** `None` (adds to `self.dependencies` set)
 
 ### `run(**kwargs)`
@@ -194,7 +194,7 @@ Runs the agent and saves output to a state file (async method).
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant A as BaseAgent
+    participant A as WorkerAgent
     participant LC as LangChain
     participant F as File System
 
@@ -212,7 +212,7 @@ sequenceDiagram
 ### Basic Agent Setup
 
 ```python
-from src.orchestration.composer import BaseAgent
+from src.orchestration.composer import WorkerAgent
 from langchain.chat_models import init_chat_model
 
 # Initialize model
@@ -222,7 +222,7 @@ model = init_chat_model(
 )
 
 # Create agent
-agent = BaseAgent(
+agent = WorkerAgent(
     name="coder",
     agent_home="./my_agents",
     model=model,
@@ -244,9 +244,9 @@ print(response)
 
 ```python
 # Create multiple agents
-coder = BaseAgent("coder", "./agents", model, [])
-tester = BaseAgent("tester", "./agents", model, [])
-reviewer = BaseAgent("reviewer", "./agents", model, [])
+coder = WorkerAgent("coder", "./agents", model, [])
+tester = WorkerAgent("tester", "./agents", model, [])
+reviewer = WorkerAgent("reviewer", "./agents", model, [])
 
 # Set up dependencies
 tester.add_dependency(coder)    # Tester depends on coder
@@ -259,7 +259,7 @@ reviewer.load_agent()
 ### Custom Context Loading
 
 ```python
-class CustomAgent(BaseAgent):
+class CustomAgent(WorkerAgent):
     def load_agent(self):
         # Call parent implementation
         super().load_agent()
@@ -290,7 +290,7 @@ class CustomAgent(BaseAgent):
 
 ```python
 try:
-    agent = BaseAgent("coder", "./agents", model)
+    agent = WorkerAgent("coder", "./agents", model)
     agent.load_agent()
 except FileNotFoundError as e:
     print(f"Missing agent file: {e}")
@@ -337,7 +337,7 @@ from unittest.mock import Mock, patch, MagicMock
 def test_agent_initialization():
     """Test agent initialization with minimal parameters"""
     mock_model = Mock()
-    agent = BaseAgent("test_agent", "/tmp/agents", mock_model)
+    agent = WorkerAgent("test_agent", "/tmp/agents", mock_model)
 
     assert agent.name == "test_agent"
     assert agent.agent_home == Path("/tmp/agents")
@@ -360,7 +360,7 @@ def test_agent_file_loading():
             f.write("# Test Heartbeat")
 
         mock_model = Mock()
-        agent = BaseAgent("test", agent_dir, mock_model)
+        agent = WorkerAgent("test", agent_dir, mock_model)
         agent.load_agent()
 
         assert agent.prompt == "# Test Agent Prompt"
@@ -377,7 +377,7 @@ def test_agent_invocation():
         mock_create.return_value = mock_agent
 
         mock_model = Mock()
-        agent = BaseAgent("test", "/tmp", mock_model)
+        agent = WorkerAgent("test", "/tmp", mock_model)
 
         response = agent.invoke([
             {"role": "user", "content": "Test message"}
@@ -411,7 +411,7 @@ def test_agent_invocation():
 
 ### Custom Agent Classes
 ```python
-class SpecializedAgent(BaseAgent):
+class SpecializedAgent(WorkerAgent):
     def __init__(self, *args, specialty=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.specialty = specialty
@@ -432,7 +432,7 @@ class SpecializedAgent(BaseAgent):
 
 ### Plugin System
 ```python
-class PluginAgent(BaseAgent):
+class PluginAgent(WorkerAgent):
     def __init__(self, *args, plugins=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.plugins = plugins or []
@@ -461,4 +461,4 @@ class PluginAgent(BaseAgent):
 
 ## Summary
 
-The `BaseAgent` class provides a robust foundation for creating AI agents that can interact with codebases, use tools, and collaborate with other agents. By following the established patterns and best practices, developers can create specialized agents for various software development tasks while maintaining consistency and reliability across the system.
+The `WorkerAgent` class provides a robust foundation for creating AI agents that can interact with codebases, use tools, and collaborate with other agents. By following the established patterns and best practices, developers can create specialized agents for various software development tasks while maintaining consistency and reliability across the system.

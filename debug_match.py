@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from src.orchestration.composer import BaseAgent
+from src.orchestration.composer import WorkerAgent
 from pathlib import Path
 import tempfile
 
@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     file = src_dir / "main.py"
     file.write_text("print")
 
-    agent = BaseAgent(
+    agent = WorkerAgent(
         name="test",
         agent_home=agent_home,
         model=None,

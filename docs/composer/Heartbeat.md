@@ -242,10 +242,10 @@ asyncio.run(run_heartbeat())
 ### Agent Integration
 
 ```python
-from src.orchestration.composer import Heartbeat, BaseAgent
+from src.orchestration.composer import Heartbeat, WorkerAgent
 
 # Create an agent
-agent = BaseAgent("coder", "./agents", model, [])
+agent = WorkerAgent("coder", "./agents", model, [])
 
 # Define agent task
 def agent_heartbeat():
@@ -643,7 +643,7 @@ class BatchHeartbeat(Heartbeat):
 
 ## Related Documentation
 
-- [BaseAgent Documentation](./BaseAgent.md)
+- [WorkerAgent Documentation](./WorkerAgent.md)
 - [HeartbeatComposer Documentation](./HeartbeatComposer.md)
 - [BaseComposer Documentation](./BaseComposer.md)
 - [Composer Overview](../composer.md)
