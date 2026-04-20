@@ -62,6 +62,9 @@ class ProviderService:
             )
             await db.commit()
             await db.refresh(provider)
+            # TODO: reset associated AgentFactorys and WorkerAgents and ChatAgents
+            # this may be somewhat complicated
+            # but you can do select by provider_id for this, then use agent_service to update the agents 
 
         return provider
 

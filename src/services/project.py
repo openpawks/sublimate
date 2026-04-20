@@ -144,6 +144,7 @@ class ProjectService:
             )
             await db.commit()
             await db.refresh(project_db)
+            await db.refresh(self.get_base_project(project_db).db_object)
 
         return self.get_base_project(project_db)
 

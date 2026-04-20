@@ -86,7 +86,8 @@ class MessageService:
             )
             await db.commit()
             await db.refresh(message)
-
+            # TODO: update associated chat
+        
         return message
 
     async def delete_message(self, id: int) -> bool:

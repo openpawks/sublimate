@@ -117,6 +117,7 @@ class ChatService:
             )
             await db.commit()
             await db.refresh(chat_db)
+            await db.refresh(self.get_base_chat(chat_db).db_object)
 
         return self.get_base_chat(chat_db)
 

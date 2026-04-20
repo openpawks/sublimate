@@ -124,6 +124,7 @@ class AgentService:
             )
             await db.commit()
             await db.refresh(agent_db)
+            await db.refresh(self.get_agent_factory(agent_db).db_object)
 
         return self.get_agent_factory(agent_db)
 
