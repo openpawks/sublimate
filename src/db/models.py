@@ -160,6 +160,24 @@ class Sender(Base):
         back_populates="senders", foreign_keys=[agent_id]
     )
 
+    @property
+    def sender_type(self) -> str:
+        if self.agent_id:
+            return "assistant"
+        elif self.user_id:
+            return "user"
+        else:
+            return "system"
+
+    @property
+    def sender(self) -> Agent | User | None:
+        match self.sender_type:
+            case "assistant":
+                return self.agent
+            case "user":
+                return self.user
+        return None
+
     created_at: Mapped[datetime] = created_at()
 
 
