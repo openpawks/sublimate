@@ -307,9 +307,6 @@ class BaseProject:
         if auto_merge:
             await self.merge_task_into_dev(task_db_obj)
 
-        if auto_merge:
-            self.merge_task_into_dev(task_db_obj)
-
     async def merge_task_into_dev(
         self, task_db_obj: models.Task, auto_resolve: bool = True
     ):
