@@ -31,6 +31,7 @@ class TestTaskService:
                         root_dir="/tmp/new_task",
                         settings_yaml="task: settings",
                         todos="Task todos",
+                        goal="Example goal",
                     )
 
                     result = await task_service.create_task(task_create)
@@ -58,6 +59,7 @@ class TestTaskService:
                         project_id=test_project.id,
                         root_dir="/tmp/invalid_task",
                         settings_yaml="task: settings",
+                        goal="Example goal",
                     )
 
                     # Should raise ValueError for non-filesafe name
@@ -78,6 +80,7 @@ class TestTaskService:
                         project_id=9999,
                         root_dir="/tmp/test_task",
                         settings_yaml="task: settings",
+                        goal="Example goal",
                     )
 
                     result = await task_service.create_task(task_create)

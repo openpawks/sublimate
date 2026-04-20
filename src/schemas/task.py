@@ -26,6 +26,9 @@ class TaskCreate(TaskBase):
         description="short todo list for the AI to remember what to do in a task",
         default=None,
     )
+    goal: str | None = Field(
+        min_length=1, max_length=4096 * 4, description="What should this task achieve"
+    )
 
 
 class TaskUpdate(TaskBase):

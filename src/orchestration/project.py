@@ -156,16 +156,65 @@ class BaseProject:
             self.repos["dev"] = dev_repo
             return dev_repo
 
+    def get_worktree_repo(self, worktree_name: str):
+        """
+        Generic get worktree repo function
+        """
+        # Check if repo is already cached
+        cached_repo = self.repos.get(worktree_name)
+        if cached_repo:
+            return cached_repo
+
+        # Check if worktree exists
+        worktrees = self.get_worktrees()
+        worktree_exists = False
+        for wt in worktrees:
+            if wt["branch"] and wt["branch"].strip("[]") == worktree_name:
+                worktree_exists = True
+                worktree_path = wt["path"]
+                break
+
+        if not worktree_exists:
+            raise ValueError(f"Worktree '{worktree_name}' does not exist")
+
+        # Create repo object and cache it
+        repo = git.Repo(worktree_path)
+        self.repos[worktree_name] = repo
+        return repo
+
+    def _parse_worktrees_output(self, output: str) -> list:
+        """
+        Parse the output of git worktree list into structured data
+        """
+        worktrees = []
+        for line in output.splitlines():
+            if line.strip():
+                parts = line.split()
+                if len(parts) >= 1:
+                    path = parts[0]
+                    commit = parts[1] if len(parts) > 1 else None
+                    branch = parts[2] if len(parts) > 2 else None
+                    worktrees.append({"path": path, "commit": commit, "branch": branch})
+        return worktrees
+
     def get_repo(self):
         if self.repo:
             return self.repo
         else:
             return self.init_repo()
 
-    async def create_task(self, name=str, branches_from="dev", settings_yaml=""):
+    async def create_task(
+        self, name: str, goal: str, branches_from="dev", settings_yaml=""
+    ):
         """
         Create a task, calling task_service to create task, but automatically set
         root_dir to the worktree root & automatically set project to this project's id
+
+        Args:
+            name: new task name, branch name etc
+            goal: task goal or description
+            branches_from: branches from task
+            settings_yaml: additional options
         """
         # TODO: version control every time a new task is created - not yet implemented
         # - task permission control here!
@@ -197,6 +246,7 @@ class BaseProject:
                 project_id=self.db_object.id,
                 root_dir=os.path.join(self.db_object.root_dir, "sublimate", f"{name}"),
                 settings_yaml=settings_yaml,
+                goal=goal,
             )
         )
 
@@ -260,11 +310,17 @@ class BaseProject:
         if auto_merge:
             self.merge_task_into_dev(task_db_obj)
 
-    async def merge_task_into_dev(self, task_db_obj: models.Task):
+    async def merge_task_into_dev(
+        self, task_db_obj: models.Task, auto_resolve: bool = True
+    ):
         """
         Merge the task's branch into main. Ensure it passes checks and precomm checks
         If there's a merge conflict, should make a new task to resolve that merge conflict and
         merge that into main
+
+        Args:
+            task_db_obj
+            auto_resolve: automatically create new task if merge conflict
         """
         dev_repo = self.get_dev_worktree_repo()
         branch_name = task_db_obj.name
@@ -286,10 +342,43 @@ class BaseProject:
             # Merge conflict
             print(f"Merge conflict merging '{branch_name}' into dev: {e}")
             # Abort merge
-            dev_repo.git.merge("--abort")
-            raise RuntimeError(
-                f"Merge conflict with branch '{branch_name}'. Create a new task to resolve conflicts."
-            )
+            if auto_resolve:
+                print("Automatically resolving in new branch")
+                # TODO: verify appropriate name
+                # - actually create a new task, containing the merge conflicts,
+                # it shouldn't affect dev. if this requires a new function write one.
+                merge_name = branch_name.strip() + "-resolve-merge-conflict-dev"
+                # Create new task to resolve merge conflicts
+                resolve_task = await self.create_task(
+                    name=merge_name,
+                    goal=f"Resolve merge conflicts from '{branch_name}' into dev",
+                    branches_from="dev",
+                    settings_yaml="",
+                )
+                # Get the resolve task repo
+                resolve_repo = self.get_worktree_repo(merge_name)
+                # Checkout dev in resolve repo
+                resolve_repo.git.checkout("dev")
+                # Merge the original branch into dev in the resolve repo
+                try:
+                    resolve_repo.git.merge(branch_name)
+                    print(
+                        f"Successfully merged '{branch_name}' into dev in resolve task '{merge_name}'"
+                    )
+                except git.exc.GitCommandError as merge_error:
+                    print(
+                        f"Merge conflict in attemptted auto-resolve task merge: {merge_error}"
+                    )
+                    # The resolve task now contains the merge conflicts for manual resolution
+                    return resolve_task
+                # If merge succeeded in resolve task, merge resolve task back into dev
+                dev_repo.git.merge(merge_name)
+                print(f"Successfully merged resolve task '{merge_name}' into dev")
+            else:
+                dev_repo.git.merge("--abort")
+                raise RuntimeError(
+                    f"Merge conflict with branch '{branch_name}'. Create a new task to resolve conflicts."
+                )
 
     async def reopen_task(self, task_db_obj: models.Task):
         """

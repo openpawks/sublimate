@@ -128,8 +128,13 @@ class TaskService:
         await db.refresh(project.db_object)
 
         # Create a chat for the task
-        chat = await chat_service.create_chat_db(task_id=new_task.id)
-        new_task.chat_id = chat.id
+        chat = await chat_service.create_chat(task_id=new_task.id)
+        new_task.chat_id = chat.db_object.id
+
+        # create a message within that new chat
+        for i in range(0, len(task.goal), 4096):
+            await chat.add_message(role="user", content=task.goal[i : i + 4096])
+
         await db.commit()
 
         # Reload task with relationships

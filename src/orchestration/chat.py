@@ -2,6 +2,8 @@ from src.services.message import message_service
 
 from src.db import models
 
+from src.schemas.message import MessageCreate
+
 
 class BaseChat:
     def __init__(self, db_object: models.Chat):
@@ -29,6 +31,5 @@ class BaseChat:
         message_service _should_ automatically update this chat.
         """
         await message_service.create_message(
-            *args,
-            **kwargs,
+            MessageCreate(chat_id=self.db_object.id, *args, **kwargs)
         )
