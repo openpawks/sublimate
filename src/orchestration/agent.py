@@ -2,6 +2,7 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
 from src.db import models
+import yaml
 
 
 class WorkerAgent:
@@ -33,7 +34,7 @@ class WorkerAgent:
         """
         Create the agent object, with tools and such
         """
-        # TODO: add tool retry middleware by default
+        # TODO: tool retry middleware not yet implemented
         # - also add tools, unsure how current tools will integrate with this
         self.agent = create_agent(model=self.model, system_prompt=self.prompt, **kwargs)
 
@@ -90,11 +91,16 @@ class AgentFactory:
         self.db_object = db_object
 
         self.name = self.db_object.name
-        self.provider_name = self.db_object.provider_name
+        self.provider_name = self.db_object.provider_id
         self.model_name = self.db_object.model_name
         self.prompt = self.db_object.prompt
         self.heartbeat_prompt = self.db_object.heartbeat_prompt
-        self.kwargs = self.db_object.kwargs
+
+        # Parse settings_yaml as YAML for kwargs
+        try:
+            self.kwargs = yaml.safe_load(self.db_object.settings_yaml or "") or {}
+        except yaml.YAMLError:
+            self.kwargs = {}
 
         self.model = None
 

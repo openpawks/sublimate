@@ -71,10 +71,12 @@ class BaseComposer:
             )
 
     def fetch_api_key_for_provider(self, provider: str) -> str:
-        # TODO:
-        # might have to get this from db not sure...
-        # can run tests with mock i guess.
-        # TEMPORARY:
+        # TODO: fetch from provider service database not yet implemented
+        # For now, use environment variable with provider prefix
+        key = os.environ.get(f"{provider.upper()}_API_KEY")
+        if key:
+            return key
+        # Fallback to generic
         return os.environ.get("TEST_API_TOKEN")
 
     def get_agent(self, name):
@@ -159,10 +161,11 @@ class BaseComposer:
         return tool
 
     def init_agent(self, agent, agent_data, Agent=WorkerAgent):
-        # TODO: add support for param to set different:
-        # heartbeat path (currently read from agent_home/heartbeats/name.md)
-        # agent path (currently read from agent_home/name.md)
-        # state? path (currently only read from agent_home/states/dependency_name.md) [Low importance]
+        # TODO: paths are currently hardcoded:
+        # heartbeat path: agent_home/heartbeats/name.md
+        # agent path: agent_home/name.md
+        # state path: agent_home/states/dependency_name.md
+        # Custom paths not yet supported.
 
         # Extract file access patterns
         file_access = agent_data.get("file_access", [])
@@ -420,12 +423,12 @@ class BaseComposer:
         return self.project
 
     def up(self):
-        # TODO: oh god
-        pass
+        # Base composer up - should be overridden by subclasses
+        raise NotImplementedError("Subclasses must implement up()")
 
     def down(self):
-        # TODO: ohh goddddd
-        pass
+        # Base composer down - should be overridden by subclasses
+        raise NotImplementedError("Subclasses must implement down()")
 
 
 class HeartbeatComposer(BaseComposer):

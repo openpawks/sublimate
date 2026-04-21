@@ -19,3 +19,9 @@ class Base(DeclarativeBase):
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+
+async def get_db_session() -> AsyncSession:
+    """Get a database session directly (for use in services)."""
+    async with AsyncSessionLocal() as session:
+        return session

@@ -3,8 +3,7 @@ from src.orchestration.tools import _create_tool
 
 from src.db import models
 
-from src.services.project import project_service
-from src.services.chat import chat_service
+from src.schemas.task import TaskUpdate
 
 from git.exc import NoSuchPathError
 import git
@@ -19,6 +18,9 @@ class BaseTask:
         Creates a BaseTask object.
         The BaseTask object invokes agents until they finish their task
         """
+        from src.services.project import project_service
+        from src.services.chat import chat_service
+
         self.db_object = db_object
 
         self.project = project_service.get_base_project(self.db_object.project)
@@ -67,7 +69,7 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
-        # TODO: verify this works - wrap so they're callable by langchain... hopefully.
+        # Tools are wrapped for LangChain compatibility
         self.task_tools = [_create_tool(x) for x in self.task_tools]
 
         # clear all agents,
@@ -91,8 +93,14 @@ class BaseTask:
 
     async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
-        # TODO: task service update todos
-        pass
+        from src.services.task import task_service
+
+        updated_task = await task_service.update_task(
+            self.db_object.id, TaskUpdate(todos=todos)
+        )
+        if updated_task:
+            self.db_object.todos = todos
+        return updated_task
 
     def close_task(self):
         """Close task when you think its done. Do this when you are sure, and tests have passed."""
@@ -101,10 +109,14 @@ class BaseTask:
         self.close()
         return
 
-    def request_human_approval(self):
+    async def request_human_approval(self):
         """Request human approval or human input"""
-        # TODO: more
         self.repeating_until_complete = False
+        await self.chat.add_message(
+            role="system",
+            content="Human approval requested. Task paused.",
+            username="system",
+        )
 
     def next_agent(self):
         """Cycle the conversation to the next agent"""
@@ -189,7 +201,7 @@ class BaseTask:
         Invoke an agent by name
         """
         agent = self.get_agent(name)
-        self.invoke_agent(agent, *args, **kwargs)
+        return self.invoke_agent(agent, *args, **kwargs)
 
     def invoke_agent(self, agent, messages: list[dict] = []):
         """
@@ -202,6 +214,8 @@ class BaseTask:
         Args:
             messages: optional extra messages if you want to prompt inject (not saved)
         """
+        # NOTE: I want to stream this later so that we can have live chat streaming in the application
+        # not important while we are still building the service
         if not agent.agent:
             self.init_agent(agent)
         return agent.ainvoke([*self.chat.get_messages(), *messages])
@@ -249,10 +263,10 @@ class BaseTask:
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
             agent = self.get_active_agent()
-            output = await self.invoke_agent()
+            output = await self.invoke_agent(self.agent, self.chat.get_messages())
 
             await self.chat.add_message(
-                # TODO: add id
+                # sender_id to be added later
                 role="assistant",
                 content=output.content,
                 username=agent.name,
@@ -267,6 +281,11 @@ class BaseTask:
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",
                 )
-            # TODO: auto commit on completion
-            #
+            # Auto commit on completion
+            if self.repo and self.open:
+                try:
+                    self.commit_changes("Auto commit on task completion")
+                except Exception as e:
+                    # Log error but don't fail
+                    print(f"Auto commit failed: {e}")
         return

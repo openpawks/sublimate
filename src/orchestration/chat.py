@@ -2,13 +2,15 @@ from src.services.message import message_service
 
 from src.db import models
 
+from src.schemas.message import MessageCreate
+
 
 class BaseChat:
     def __init__(self, db_object: models.Chat):
         # so at least with deepseek, it looks like
         # they cache automatically, so we don't have to worry about that
         # for now.
-        # TODO: user ids or usernames for messaging
+        # TODO: user ids or usernames for messaging not yet implemented
         # to track which user/assistant sent a message
 
         self.db_object = db_object
@@ -17,7 +19,7 @@ class BaseChat:
         """
         Get messages from chat
         """
-        # TODO: dynamically set role based on requester/sender id, so other's seem to be "user"
+        # TODO: role mapping based on requester/sender id not yet implemented
         return [
             {"role": msg.role, "content": msg.content}
             for msg in self.db_object.messages
@@ -29,6 +31,5 @@ class BaseChat:
         message_service _should_ automatically update this chat.
         """
         await message_service.create_message(
-            *args,
-            **kwargs,
+            MessageCreate(chat_id=self.db_object.id, *args, **kwargs)
         )
