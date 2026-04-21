@@ -1,5 +1,5 @@
 # ERD
-![ERD][docs/imgs/erd.png]
+![ERD](docs/imgs/erd.png)
 
 # Endpoint plan
 ## Project
@@ -34,4 +34,4 @@
 
 # Web layout
 Coming soon!
-![Web layout][docs/imgs/web_layout_plan.png]
+![Web layout](docs/imgs/web_layout_plan.png)
