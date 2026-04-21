@@ -198,12 +198,10 @@ class Agent(Base):
 class Provider(Base):
     __tablename__ = "providers"
 
-    id: Mapped[int_pk] 
+    id: Mapped[int_pk]
 
     nickname: Mapped[str] = mapped_column(
-        String(50),
-        primary_key=True,
-        unique=True,
+        String(50), primary_key=True, default="New provider"
     )
 
     name: Mapped[nickname]
