@@ -11,6 +11,8 @@ import subprocess
 import json
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime
+import glob
+import re
 
 # Try to import LangChain tools, but provide fallback for testing
 _HAS_LANGCHAIN = True
@@ -72,11 +74,33 @@ def _create_tool(
     if "\n" in tool_description:
         tool_description = tool_description.split("\n")[0]
 
-    return StructuredTool.from_function(
-        func=func,
-        name=tool_name,
-        description=tool_description,
-    )
+    # Handle methods with self parameter by creating a wrapper
+    import inspect
+
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+
+    if params and params[0].name == "self":
+        # This is a method, create a wrapper that ignores self
+        def wrapper(*args, **kwargs):
+            # Skip the first argument (self) when calling the original function
+            return func(*args, **kwargs)
+
+        # Copy the function name and docstring to the wrapper
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+
+        return StructuredTool.from_function(
+            func=wrapper,
+            name=tool_name,
+            description=tool_description,
+        )
+    else:
+        return StructuredTool.from_function(
+            func=func,
+            name=tool_name,
+            description=tool_description,
+        )
 
 
 def write_file(file_path: str, content: str, append: bool = False) -> str:
@@ -127,6 +151,55 @@ def read_file(file_path: str) -> str:
         return content
     except Exception as e:
         return f"Error reading {file_path}: {str(e)}"
+
+
+def read_file_lines(
+    file_path: str, start_line: int = 1, end_line: Optional[int] = None
+) -> str:
+    """
+    Read specific lines from a file.
+
+    Args:
+        file_path: Path to the file to read
+        start_line: First line to read (1-indexed, inclusive)
+        end_line: Last line to read (1-indexed, inclusive). If None, reads to end of file.
+
+    Returns:
+        Requested lines as a string, or error message
+    """
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return f"File not found: {file_path}"
+
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Validate line numbers
+        total_lines = len(lines)
+        if start_line < 1:
+            start_line = 1
+        if start_line > total_lines:
+            return f"Start line {start_line} exceeds file length ({total_lines} lines)"
+
+        if end_line is None:
+            end_line = total_lines
+        elif end_line < start_line:
+            # If end_line is less than start_line, swap them
+            start_line, end_line = end_line, start_line
+        if end_line > total_lines:
+            end_line = total_lines
+
+        # Convert to 0-indexed
+        start_idx = start_line - 1
+        end_idx = end_line  # exclusive slice
+        selected_lines = lines[start_idx:end_idx]
+
+        # Join lines, preserving original newlines
+        content = "".join(selected_lines)
+        return content
+    except Exception as e:
+        return f"Error reading lines from {file_path}: {str(e)}"
 
 
 def create_agent(
@@ -211,6 +284,7 @@ def create_task(
     Returns:
         Task ID or error description
     """
+    # TODO: not yet integrated with BaseTask service - currently mock implementation
     try:
         if tags is None:
             tags = []
@@ -249,6 +323,7 @@ def close_task(task_id: str, notes: str = "") -> str:
     Returns:
         Success message or error description
     """
+    # TODO: not yet integrated with project service - currently mock implementation
     try:
         # In a real implementation, this would update a database
         return f"Task {task_id} closed. Notes: {notes}"
@@ -289,9 +364,134 @@ def dangerously_run_commands(command: str, timeout: int = 30) -> str:
         return f"Error running command: {str(e)}"
 
 
+def insert_file_lines(file_path: str, content: str, line_number: int) -> str:
+    """
+    Insert content at a specific line number in a file.
+
+    Args:
+        file_path: Path to the file
+        content: Content to insert
+        line_number: Line number to insert before (1-indexed). If line_number
+                     exceeds total lines, content is appended.
+
+    Returns:
+        Success message or error description
+    """
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return f"File not found: {file_path}"
+
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Convert line_number to 0-indexed
+        idx = line_number - 1
+        if idx < 0:
+            idx = 0
+        if idx > len(lines):
+            idx = len(lines)
+
+        # Split content into lines, preserving newline characters
+        new_lines = content.splitlines(keepends=True)
+        if not new_lines:
+            new_lines = [""]
+
+        # Insert or append
+        lines[idx:idx] = new_lines
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        return f"Successfully inserted content at line {line_number} in {file_path}"
+    except Exception as e:
+        return f"Error inserting content in {file_path}: {str(e)}"
+
+
+def glob_files(pattern: str, path: Optional[str] = None) -> str:
+    """
+    Find files matching a glob pattern.
+
+    Args:
+        pattern: Glob pattern to match
+        path: Optional directory to search in (defaults to current directory)
+
+    Returns:
+        JSON list of matched file paths or error message
+    """
+    try:
+        search_path = path if path else "."
+        # Use glob.glob with recursive pattern support
+        matches = glob.glob(pattern, root_dir=search_path, recursive=True)
+        # Convert to absolute paths
+        abs_matches = [str(Path(search_path) / m) for m in matches]
+        return json.dumps(abs_matches, indent=2)
+    except Exception as e:
+        return f"Error globbing pattern {pattern}: {str(e)}"
+
+
+def grep_files(
+    pattern: str, path: Optional[str] = None, include: Optional[str] = None
+) -> str:
+    """
+    Search for pattern in files.
+
+    Args:
+        pattern: Regex pattern to search for
+        path: Optional directory to search in (defaults to current directory)
+        include: Optional file pattern to include (e.g., "*.py")
+
+    Returns:
+        JSON list of matches with file, line number, and line text, or error message
+    """
+    # TODO: agent permission checking not yet implemented - searches all files
+    try:
+        search_path = Path(path) if path else Path(".")
+        if not search_path.exists():
+            return f"Path not found: {search_path}"
+
+        # Compile regex
+        regex = re.compile(pattern)
+
+        # Determine which files to search
+        files_to_search = []
+        if include:
+            # Use glob to filter files by pattern
+            for file_path in search_path.rglob("*"):
+                if file_path.is_file() and file_path.match(include):
+                    files_to_search.append(file_path)
+        else:
+            # Search all files recursively
+            for file_path in search_path.rglob("*"):
+                if file_path.is_file():
+                    files_to_search.append(file_path)
+
+        matches = []
+        for file_path in files_to_search:
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    for line_num, line in enumerate(f, start=1):
+                        if regex.search(line):
+                            matches.append(
+                                {
+                                    "file": str(file_path),
+                                    "line": line_num,
+                                    "text": line.rstrip("\n"),
+                                }
+                            )
+            except (IOError, UnicodeDecodeError):
+                # Skip unreadable files
+                continue
+
+        return json.dumps(matches, indent=2)
+    except Exception as e:
+        return f"Error grepping pattern {pattern}: {str(e)}"
+
+
 # Create LangChain tool objects from the functions
 write_file_tool = _create_tool(write_file)
 read_file_tool = _create_tool(read_file)
+read_file_lines_tool = _create_tool(read_file_lines)
 create_agent_tool = _create_tool(create_agent)
 delete_agent_tool = _create_tool(delete_agent)
 create_task_tool = _create_tool(create_task)
@@ -300,6 +500,9 @@ dangerously_run_commands_tool = _create_tool(
     dangerously_run_commands,
     description="Run shell commands. WARNING: This is dangerous and should be used with caution.",
 )
+insert_file_lines_tool = _create_tool(insert_file_lines)
+glob_files_tool = _create_tool(glob_files)
+grep_files_tool = _create_tool(grep_files)
 
 
 # Utility function to get all tools as LangChain tool objects
@@ -313,11 +516,15 @@ def get_all_tools() -> Dict[str, Any]:
     tools = {
         "write_file": write_file_tool,
         "read_file": read_file_tool,
+        "read_file_lines": read_file_lines_tool,
         "create_agent": create_agent_tool,
         "delete_agent": delete_agent_tool,
         "create_task": create_task_tool,
         "close_task": close_task_tool,
         "dangerously_run_commands": dangerously_run_commands_tool,
+        "insert_file_lines": insert_file_lines_tool,
+        "glob_files": glob_files_tool,
+        "grep_files": grep_files_tool,
     }
     return tools
 
@@ -341,18 +548,26 @@ def get_tools_by_names(tool_names: list) -> Dict[str, Any]:
 __all__ = [
     "write_file",
     "read_file",
+    "read_file_lines",
     "create_agent",
     "delete_agent",
     "create_task",
     "close_task",
     "dangerously_run_commands",
+    "insert_file_lines",
+    "glob_files",
+    "grep_files",
     "write_file_tool",
     "read_file_tool",
+    "read_file_lines_tool",
     "create_agent_tool",
     "delete_agent_tool",
     "create_task_tool",
     "close_task_tool",
     "dangerously_run_commands_tool",
+    "insert_file_lines_tool",
+    "glob_files_tool",
+    "grep_files_tool",
     "get_all_tools",
     "get_tools_by_names",
 ]

@@ -3,7 +3,7 @@ from langchain.chat_models import init_chat_model
 from pathlib import Path
 from dotenv import load_dotenv
 from src.orchestration.tools import _create_tool
-from src.orchestration.agent import BaseAgent
+from src.orchestration.agent import WorkerAgent
 from src.orchestration.heartbeat import Heartbeat
 
 import os
@@ -29,14 +29,14 @@ class BaseComposer:
     Server doesn't need to interact with this directly, just can manage the config files for the agents and composer.
     """
 
-    def __init__(self, agent_home, tools: dict, root_folder=""):
+    def __init__(self, agent_home, tools: dict, root_dir="", project=None):
         self.agent_home = (
             isinstance(agent_home, Path) and agent_home or Path(agent_home)
         )
 
-        self.root_folder = (
-            root_folder
-            and (isinstance(root_folder, Path) and root_folder or Path(root_folder))
+        self.root_dir = (
+            root_dir
+            and (isinstance(root_dir, Path) and root_dir or Path(root_dir))
             or self.agent_home / ".."
         ).resolve()
 
@@ -44,6 +44,8 @@ class BaseComposer:
         self.models = {}
 
         self.tools = tools
+        self.project = project
+
         filepath = self.agent_home / "sublimate-compose.yml"
         if os.path.exists(filepath):
             with open(filepath) as f:
@@ -69,10 +71,12 @@ class BaseComposer:
             )
 
     def fetch_api_key_for_provider(self, provider: str) -> str:
-        # TODO:
-        # might have to get this from db not sure...
-        # can run tests with mock i guess.
-        # TEMPORARY:
+        # TODO: fetch from provider service database not yet implemented
+        # For now, use environment variable with provider prefix
+        key = os.environ.get(f"{provider.upper()}_API_KEY")
+        if key:
+            return key
+        # Fallback to generic
         return os.environ.get("TEST_API_TOKEN")
 
     def get_agent(self, name):
@@ -107,9 +111,13 @@ class BaseComposer:
         elif callable(tool) and hasattr(tool, "__name__"):
             tool_name = tool.__name__
 
-        if tool_name in ("read_file", "write_file"):
+        if tool_name in (
+            "read_file_linesinsert_file_lines",
+            "read_file",
+            "write_file",
+        ):
             # Create a wrapper function that calls agent_obj.check_file_access
-            if tool_name == "read_file":
+            if tool_name in ["read_file", "read_file_lines"]:
 
                 def wrapped_read_file(file_path: str) -> str:
                     if not agent_obj.check_file_access(file_path, mode="read"):
@@ -124,12 +132,12 @@ class BaseComposer:
                 if _create_tool is not None:
                     return _create_tool(
                         wrapped_read_file,
-                        name="read_file",
-                        description="Read a file with permission checks",
+                        name=tool_name,
+                        description=tool.description,  # "Read a file with permission checks",
                     )
                 else:
                     return wrapped_read_file
-            elif tool_name == "write_file":
+            elif tool_name in ["write_file", "insert_file_lines"]:
 
                 def wrapped_write_file(
                     file_path: str, content: str, append: bool = False
@@ -144,19 +152,20 @@ class BaseComposer:
                 if _create_tool is not None:
                     return _create_tool(
                         wrapped_write_file,
-                        name="write_file",
-                        description="Write to a file with permission checks",
+                        name=tool_name,
+                        description=tool.description,  # "Write to a file with permission checks",
                     )
                 else:
                     return wrapped_write_file
         # For other tools, return as-is
         return tool
 
-    def init_agent(self, agent, agent_data, Agent=BaseAgent):
-        # TODO: add support for param to set different:
-        # heartbeat path (currently read from agent_home/heartbeats/name.md)
-        # agent path (currently read from agent_home/name.md)
-        # state? path (currently only read from agent_home/states/dependency_name.md) [Low importance]
+    def init_agent(self, agent, agent_data, Agent=WorkerAgent):
+        # TODO: paths are currently hardcoded:
+        # heartbeat path: agent_home/heartbeats/name.md
+        # agent path: agent_home/name.md
+        # state path: agent_home/states/dependency_name.md
+        # Custom paths not yet supported.
 
         # Extract file access patterns
         file_access = agent_data.get("file_access", [])
@@ -166,7 +175,7 @@ class BaseComposer:
         deny_file_access = agent_data.get("deny_file_access", [])
 
         # Create permission checker closure
-        root_folder = self.root_folder
+        root_dir = self.root_dir
 
         def check_file_access(file_path, mode="read"):
             """Check file access using the agent's patterns."""
@@ -175,7 +184,7 @@ class BaseComposer:
             path = Path(file_path)
             if path.is_absolute():
                 try:
-                    relative = path.relative_to(root_folder)
+                    relative = path.relative_to(root_dir)
                 except ValueError:
                     return False
             else:
@@ -258,7 +267,12 @@ class BaseComposer:
             if not tool:
                 continue
             # Wrap file-related tools
-            if tool_name in ("read_file", "write_file"):
+            if tool_name in (
+                "insert_file_lines",
+                "read_file_lines",
+                "read_file",
+                "write_file",
+            ):
                 if tool_name == "read_file":
 
                     def wrapped_read_file(file_path: str) -> str:
@@ -356,7 +370,7 @@ class BaseComposer:
                 agent_data.get("model", agent_data.get("model_name", "default"))
             ],
             wrapped_tools,
-            str(self.root_folder),
+            str(self.root_dir),
             file_access=file_access,
             read_only_file_access=read_only_file_access,
             deny_file_access=deny_file_access,
@@ -364,7 +378,7 @@ class BaseComposer:
 
         self.agents[agent].load_agent()
 
-    def init_agents(self, Agent=BaseAgent):
+    def init_agents(self, Agent=WorkerAgent):
         for agent in self.data.get("agents").keys():
             self.init_agent(agent, self.data.get("agents").get(agent), Agent)
 
@@ -405,13 +419,16 @@ class BaseComposer:
     def get_agent_names(self):
         return list(self.data.get("agents").keys())
 
+    def get_project(self):
+        return self.project
+
     def up(self):
-        # TODO: oh god
-        pass
+        # Base composer up - should be overridden by subclasses
+        raise NotImplementedError("Subclasses must implement up()")
 
     def down(self):
-        # TODO: ohh goddddd
-        pass
+        # Base composer down - should be overridden by subclasses
+        raise NotImplementedError("Subclasses must implement down()")
 
 
 class HeartbeatComposer(BaseComposer):

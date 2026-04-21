@@ -15,10 +15,14 @@ from schemas import (
 )
 from database import get_db
 
+from dependencies.services import get_project_service, get_task_service
+from services.project_service import ProjectService
+from services.task_service import TaskService
 
 router = APIRouter()
 
 
+# helper dependency
 async def get_project_or_404(
     project_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -36,12 +40,11 @@ async def get_project_or_404(
 
 
 @router.get("", response_model=list[ProjectResponse])
-async def get_projects(db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(
-        select(models.Project).order_by(models.Project.created_at)
-    )
-    projects = result.scalars().all()
-    return projects
+async def get_projects(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+):
+    return project_service.get_projects(db)
 
 
 @router.post(
@@ -50,22 +53,11 @@ async def get_projects(db: Annotated[AsyncSession, Depends(get_db)]):
     status_code=status.HTTP_201_CREATED,
 )
 async def create_project(
-    project: ProjectCreate, db: Annotated[AsyncSession, Depends(get_db)]
+    project: ProjectCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: ProjectService,
 ):
-    # TODO: authentication
-
-    new_project = models.Project(
-        root_dir=project.root_dir,
-        agent_root_dir=project.agent_root_dir,
-    )
-
-    # so really, we should also have project INIT, which creates heartbeats and stuff for the AI models.
-
-    db.add(new_project)
-    await db.commit()
-    await db.refresh(new_project)
-
-    return new_project
+    return project_service.create_project(project, db)
 
 
 @router.patch(
@@ -74,19 +66,11 @@ async def create_project(
 )
 async def update_project_partial(
     project: Annotated[models.Project, Depends(get_project_or_404)],
-    project_data: ProjectUpdate,
+    project_updated: ProjectUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
-    # TODO: we need auth
-
-    # update
-    update_data = project_data.model_dump(exclude_unset=True)
-    for f, v in update_data.items():
-        setattr(project, f, v)
-
-    await db.commit()
-    await db.refresh(project)
-    return project
+    return project_service.update_project_partial(project, project_updated, db)
 
 
 @router.put(
@@ -95,19 +79,11 @@ async def update_project_partial(
 )
 async def update_project_full(
     project: Annotated[models.Project, Depends(get_project_or_404)],
-    project_data: ProjectCreate,
+    project_updated: ProjectCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
-    # TODO: auth
-
-    update_data = project_data.model_dump()
-    for f, v in update_data.items():
-        setattr(project, f, v)
-
-    await db.commit()
-    await db.refresh(project)
-
-    return project
+    return project_service.update_project_full(project, project_updated, db)
 
 
 @router.delete(
@@ -117,26 +93,21 @@ async def update_project_full(
 async def delete_project(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
 ):
-    # TODO: authentication
+    return project_service.delete_project(project, db)
 
-    await db.delete(project)
-    await db.commit()
+
+# TASKS
 
 
 @router.get("/{project_id}/tasks", response_model=list[TaskResponse])
 async def get_tasks(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    result = await db.execute(
-        select(models.Task)
-        .where(models.Task.project_id == project.id)
-        .order_by(models.Task.created_at.desc())
-    )
-    tasks = result.scalars().all()
-
-    return tasks
+    return task_service.get_tasks(project, db)
 
 
 @router.post("/{project_id}/tasks", response_model=TaskResponse)
@@ -144,34 +115,20 @@ async def create_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task: TaskCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    new_task = models.Task(project_id=project.id, chat_id=task.chat_id)
-
-    db.add(new_task)
-    await db.commit()
-    await db.refresh(new_task)
-    return new_task
+    return task_service.create_task(project, task, db)
 
 
+# maybe change this to /tasks/{task_id}?
 @router.get("/{project_id}/tasks/{task_id}", response_model=TaskResponse)
 async def get_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    result = await db.execute(
-        select(models.Task).where(
-            models.Task.id == task_id, models.Task.project_id == project.id
-        )
-    )
-    task = result.scalars().first()
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
-
-    return task
+    return task_service.get_task(project, task_id, db)
 
 
 @router.delete("/{project_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -179,18 +136,6 @@ async def delete_task(
     project: Annotated[models.Project, Depends(get_project_or_404)],
     task_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
 ):
-    result = await db.execute(
-        select(models.Task).where(
-            models.Task.id == task_id, models.Task.project_id == project.id
-        )
-    )
-    task = result.scalars().first()
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
-
-    await db.delete(task)
-    await db.commit()
+    return task_service.delete_task(project, task_id, db)

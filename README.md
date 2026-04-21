@@ -25,6 +25,7 @@ An automated code management system. Using Sublimate, unlike other AI assisted d
   - In order not to overwhelm context limits, and grasp just what needs to be known for each change
 - Add tasks for an agent to complete
   - Agents may add tasks when they find errors, and that may be completed by another
+- LSP integration on file write tools and such
 
 # Tech stack
 | Library/Framework | Purpose |
