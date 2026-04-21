@@ -201,7 +201,7 @@ class BaseTask:
         Invoke an agent by name
         """
         agent = self.get_agent(name)
-        self.invoke_agent(agent, *args, **kwargs)
+        return self.invoke_agent(agent, *args, **kwargs)
 
     def invoke_agent(self, agent, messages: list[dict] = []):
         """
@@ -214,6 +214,8 @@ class BaseTask:
         Args:
             messages: optional extra messages if you want to prompt inject (not saved)
         """
+        # NOTE: I want to stream this later so that we can have live chat streaming in the application
+        # not important while we are still building the service
         if not agent.agent:
             self.init_agent(agent)
         return agent.ainvoke([*self.chat.get_messages(), *messages])
@@ -261,7 +263,7 @@ class BaseTask:
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
             agent = self.get_active_agent()
-            output = await self.invoke_agent()
+            output = await self.invoke_agent(self.agent, self.chat.get_messages())
 
             await self.chat.add_message(
                 # sender_id to be added later
