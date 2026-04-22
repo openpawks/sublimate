@@ -5,13 +5,19 @@ class AgentBase(BaseModel):
     name: str = Field(min_length=1, max_length=50, description="agent nickname")
     project_id: int
     prompt: str | None = Field(
-        min_length=0, max_length=4096, description="prompt for agent"
+        min_length=0, max_length=4096, description="prompt for agent", default=None
     )
     heartbeat_prompt: str | None = Field(
-        min_length=0, max_length=4096, description="heartbeat_prompt for agent"
+        min_length=0,
+        max_length=4096,
+        description="heartbeat_prompt for agent",
+        default=None,
     )
     settings_yaml: str | None = Field(
-        min_length=0, max_length=4096, description="optional settings in yaml format"
+        min_length=0,
+        max_length=4096,
+        description="optional settings in yaml format",
+        default=None,
     )
 
 

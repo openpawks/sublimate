@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from datetime import datetime
+
 
 class ProjectBase(BaseModel):
     user_id: int = Field(
@@ -16,7 +18,10 @@ class ProjectBase(BaseModel):
 class ProjectCreate(ProjectBase):
     name: str = Field(min_length=1, max_length=50, description="Name of the project")
     settings_yaml: str | None = Field(
-        min_length=0, max_length=2048, description="optional extra settings"
+        min_length=0,
+        max_length=2048,
+        description="optional extra settings",
+        default=None,
     )
 
 
@@ -32,3 +37,11 @@ class ProjectUpdate(ProjectBase):
         description="optional extra settings",
         default=None,
     )
+
+
+class ProjectResponse(ProjectBase):
+    id: int
+    name: str
+    tasks: list[dict] = []
+    agents: list[dict] = []
+    created_at: datetime

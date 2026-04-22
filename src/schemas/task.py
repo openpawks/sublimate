@@ -27,7 +27,10 @@ class TaskCreate(TaskBase):
         default=None,
     )
     goal: str | None = Field(
-        min_length=1, max_length=4096 * 4, description="What should this task achieve"
+        min_length=1,
+        max_length=4096 * 4,
+        description="What should this task achieve",
+        default=None,
     )
 
 

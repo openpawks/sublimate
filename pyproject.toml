@@ -6,16 +6,19 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiosqlite>=0.20.0",
+    "anyio>=4.13.0",
     "black>=26.3.1",
     "croniter>=6.2.2",
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.135.3",
+    "git-python>=1.0.3",
     "gitpython>=3.1.46",
     "langchain[ollama]>=1.2.15",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.1.0",
+    "pytest-git>=1.8.0",
     "pytest-html>=4.2.0",
     "pyyaml>=6.0.3",
     "ruff>=0.15.9",
@@ -24,7 +27,9 @@ dependencies = [
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = [
+asyncio_mode = "auto"
+
+adopts = [
     "--strict-markers",
     "--strict-config",
     "--tb=short",
@@ -49,4 +54,9 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
+]
+
+[dependency-groups]
+dev = [
+    "gitpython>=3.1.46",
 ]

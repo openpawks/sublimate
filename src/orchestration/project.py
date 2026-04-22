@@ -242,7 +242,8 @@ class BaseProject:
             raise ValueError(
                 f"Task name '{name}' is not filesafe. Only alphanumeric, underscores, hyphens, and dots allowed."
             )
-            # OR WE COULD DO name = self._to_filesafe(name)
+            # TODO: automatically convert to filesafe name, only ValueError if branch already exists
+            # name = self._to_filesafe(name)
 
         # create new worktree
         # TODO: check task name doesnt already exist in repo/project
