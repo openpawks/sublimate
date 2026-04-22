@@ -4,6 +4,7 @@ from src.services.task import task_service
 from src.schemas.task import TaskCreate, TaskUpdate
 
 import os
+import re
 
 import git
 from git.exc import NoSuchPathError
@@ -50,11 +51,23 @@ class BaseProject:
         Check if a string is safe for use as a filename/branch name.
         Allows alphanumeric, hyphens, underscores, dots, no spaces or slashes.
         """
-        import re
-
         # Allow alphanumeric, hyphen, underscore, dot
         pattern = r"^[a-zA-Z0-9_.-]+$"
         return bool(re.match(pattern, name))
+
+    @staticmethod
+    def _to_filesafe(name: str) -> str:
+        """
+        Convert a string to be safe for use as a filename/branch name.
+        Replaces invalid characters (spaces, slashes, etc.) with hyphens.
+        """
+        # Replace spaces and slashes with hyphens, remove other non-safe chars
+        safe = re.sub(r"[^a-zA-Z0-9_.-]", "-", name)
+        # Collapse multiple hyphens into one
+        safe = re.sub(r"-+", "-", safe)
+        # Strip leading/trailing hyphens and dots
+        safe = safe.strip("-.")
+        return safe if safe else "unnamed"
 
     def init_repo(self):
         """
@@ -229,8 +242,10 @@ class BaseProject:
             raise ValueError(
                 f"Task name '{name}' is not filesafe. Only alphanumeric, underscores, hyphens, and dots allowed."
             )
+            # OR WE COULD DO name = self._to_filesafe(name)
 
         # create new worktree
+        # TODO: check task name doesnt already exist in repo/project
         self.get_repo().git.worktree(
             "add",
             "-b",

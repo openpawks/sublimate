@@ -15,5 +15,5 @@ mock.db
 .aider*
 
 .env
-tmp/*
+**tmp/*
 htmlcov/*
