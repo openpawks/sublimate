@@ -1,5 +1,3 @@
-from src.services.message import message_service
-
 from src.db import models
 
 from src.schemas.message import MessageCreate
@@ -30,6 +28,8 @@ class BaseChat:
         Add message to the chat using message_service,
         message_service _should_ automatically update this chat.
         """
-        await message_service.create_message(
+        from src.services import registry
+
+        await registry.message_service.create_message(
             MessageCreate(chat_id=self.db_object.id, *args, **kwargs)
         )

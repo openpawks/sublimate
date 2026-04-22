@@ -18,13 +18,12 @@ class BaseTask:
         Creates a BaseTask object.
         The BaseTask object invokes agents until they finish their task
         """
-        from src.services.project import project_service
-        from src.services.chat import chat_service
+        from src.services import registry
 
         self.db_object = db_object
 
-        self.project = project_service.get_base_project(self.db_object.project)
-        self.chat = chat_service.get_base_chat(self.db_object.chat)
+        self.project = registry.project_service.get_base_project(self.db_object.project)
+        self.chat = registry.chat_service.get_base_chat(self.db_object.chat)
         self.name = self.db_object.name
 
         self.task_tools = []
@@ -93,9 +92,9 @@ class BaseTask:
 
     async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
-        from src.services.task import task_service
+        from src.services import registry
 
-        updated_task = await task_service.update_task(
+        updated_task = await registry.task_service.update_task(
             self.db_object.id, TaskUpdate(todos=todos)
         )
         if updated_task:

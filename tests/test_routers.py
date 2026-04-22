@@ -40,6 +40,7 @@ async def router_session(router_engine):
 
 @pytest_asyncio.fixture(autouse=True)
 async def clean_db(router_session):
+    # Keep the users table intact - tests rely on user_id=1 existing
     await router_session.execute(text("PRAGMA foreign_keys = OFF"))
     tables = [
         "messages",
@@ -50,12 +51,11 @@ async def clean_db(router_session):
         "chats",
         "tasks",
         "projects",
-        "users",
     ]
     for table in tables:
         await router_session.execute(text(f"DELETE FROM {table}"))
-    await router_session.execute(text("PRAGMA foreign_keys = ON"))
     await router_session.commit()
+    await router_session.execute(text("PRAGMA foreign_keys = ON"))
 
 
 @pytest_asyncio.fixture

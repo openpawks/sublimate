@@ -16,11 +16,11 @@ class MessageService:
         Create a message for a given chat_id
         Also attempt to update the chat object in memory's data
         """
-        from src.services.chat import chat_service
+        from src.services import registry
 
         db = await get_db_session()
 
-        chat = await chat_service.get_chat_by_id(message.chat_id)
+        chat = await registry.chat_service.get_chat_by_id(message.chat_id)
 
         if not chat:
             return None
@@ -87,7 +87,7 @@ class MessageService:
             await db.commit()
             await db.refresh(message)
             # TODO: update associated chat
-        
+
         return message
 
     async def delete_message(self, id: int) -> bool:

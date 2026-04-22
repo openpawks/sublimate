@@ -95,7 +95,6 @@ async def clean_database(async_session):
         "chats",
         "tasks",
         "projects",
-        "users",
     ]
 
     for table in tables:

@@ -99,12 +99,11 @@ class TaskService:
         """
         Create a new task in the database
         """
-        from src.services.project import project_service
-        from src.services.chat import chat_service
+        from src.services import registry
 
         db = await get_db_session()
 
-        project = await project_service.get_project_by_id(task.project_id)
+        project = await registry.project_service.get_project_by_id(task.project_id)
         if not project:
             # project doesn't exist
             return None
@@ -128,7 +127,7 @@ class TaskService:
         await db.refresh(project.db_object)
 
         # Create a chat for the task
-        chat = await chat_service.create_chat(task_id=new_task.id)
+        chat = await registry.chat_service.create_chat(task_id=new_task.id)
         new_task.chat_id = chat.db_object.id
 
         # create a message within that new chat

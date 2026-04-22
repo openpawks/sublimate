@@ -1,6 +1,5 @@
 from src.db import models
 
-from src.services.task import task_service
 from src.schemas.task import TaskCreate, TaskUpdate
 
 import os
@@ -256,7 +255,9 @@ class BaseProject:
         )
 
         # create new task
-        task = await task_service.create_task(
+        from src.services import registry
+
+        task = await registry.task_service.create_task(
             task=TaskCreate(
                 name=name,
                 project_id=self.db_object.id,
@@ -306,7 +307,9 @@ class BaseProject:
         then someone needs to write that function), remove the worktree.
         """
         # Update task as closed
-        updated_task = await task_service.update_task(
+        from src.services import registry
+
+        updated_task = await registry.task_service.update_task(
             task_db_obj.id, TaskUpdate(open=False)
         )
         if not updated_task:
@@ -398,7 +401,9 @@ class BaseProject:
         If a task is closed, then open it, add a worktree to the project
         """
         # Update task as open
-        updated_task = await task_service.update_task(
+        from src.services import registry
+
+        updated_task = await registry.task_service.update_task(
             task_db_obj.id, TaskUpdate(open=True)
         )
         if not updated_task:
