@@ -4,6 +4,8 @@ import asyncio
 
 from fastapi import WebSocket
 
+from src.schemas.message import MessageCreate
+
 
 class WebSocketConnection:
     def __init__(
@@ -84,18 +86,18 @@ class ConnectionManager:
             self.disconnect_chat_websocket(chat_id, websocket_connection_id)
         del self.active_connections[websocket_connection.id]
 
-    def broadcast_message_chat(self, message_json: dict, chat_id: int):
+    async def broadcast_message_chat(self, message: MessageCreate):
         """
         Broadcast (full) message to chat
         """
         await asyncio.gather(
             *[
-                asyncio.create_task(ws_conn.websocket.send_json(message_json))
-                for ws_conn in self.chat_connections.get(chat_id, {}).values()
+                asyncio.create_task(ws_conn.websocket.send_json(message.model_dump()))
+                for ws_conn in self.chat_connections.get(message.chat_id, {}).values()
             ]
         )
 
-    async def broadcast_stream_to_chat(self, message_chunk: dict, chat_id: int):
+    async def broadcast_chunk_to_chat(self, message_chunk: dict, chat_id: int):
         """
         Broadcast chunk to chat (like if the AI is streaming its message)
         """
