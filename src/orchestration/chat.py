@@ -1,5 +1,7 @@
 from src.db import models
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.schemas.message import MessageCreate
 
 
@@ -23,7 +25,7 @@ class BaseChat:
             for msg in self.db_object.messages
         ]
 
-    async def add_message(self, *args, **kwargs):
+    async def add_message(self, db: AsyncSession, *args, **kwargs):
         """
         Add message to the chat using message_service,
         message_service _should_ automatically update this chat.
@@ -31,5 +33,5 @@ class BaseChat:
         from src.services import registry
 
         await registry.message_service.create_message(
-            MessageCreate(chat_id=self.db_object.id, *args, **kwargs)
+            MessageCreate(chat_id=self.db_object.id, *args, **kwargs), db=db
         )

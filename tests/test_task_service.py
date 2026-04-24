@@ -16,84 +16,69 @@ class TestTaskService:
     @pytest.mark.asyncio
     async def test_create_task(self, task_service, async_session, test_project):
         """Test creating a new task."""
-        with patch("src.services.task.get_db_session", return_value=async_session):
-            with patch("src.services.chat.get_db_session", return_value=async_session):
-                with patch(
-                    "src.services.message.get_db_session", return_value=async_session
-                ):
-                    # Mock project_service.get_project_by_id to return test project
-                    mock_project = AsyncMock()
-                    mock_project.db_object = test_project
-                    with patch(
-                        "src.services.project.project_service.get_project_by_id",
-                        return_value=mock_project,
-                    ):
-                        task_create = TaskCreate(
-                            name="new-task",
-                            project_id=test_project.id,
-                            root_dir="/tmp/new_task",
-                            settings_yaml="task: settings",
-                            todos="Task todos",
-                            goal="Example goal",
-                        )
+        # Mock project_service.get_project_by_id to return test project
+        mock_project = AsyncMock()
+        mock_project.db_object = test_project
+        with patch(
+            "src.services.project.project_service.get_project_by_id",
+            return_value=mock_project,
+        ):
+            task_create = TaskCreate(
+                name="new-task",
+                project_id=test_project.id,
+                root_dir="/tmp/new_task",
+                settings_yaml="task: settings",
+                todos="Task todos",
+                goal="Example goal",
+            )
 
-                        result = await task_service.create_task(task_create)
+            result = await task_service.create_task(task_create, async_session)
 
-                        assert result is not None
-                        assert result.db_object.name == "new-task"
-                        assert result.db_object.project_id == test_project.id
-                        assert result.db_object.todos == "Task todos"
+            assert result is not None
+            assert result.db_object.name == "new-task"
+            assert result.db_object.project_id == test_project.id
+            assert result.db_object.todos == "Task todos"
 
     @pytest.mark.asyncio
     async def test_create_task_invalid_name(
         self, task_service, async_session, test_project
     ):
         """Test creating a task with invalid (non-filesafe) name."""
-        with patch("src.services.task.get_db_session", return_value=async_session):
-            with patch("src.services.chat.get_db_session", return_value=async_session):
-                with patch(
-                    "src.services.message.get_db_session", return_value=async_session
-                ):
-                    mock_project = AsyncMock()
-                    mock_project.db_object = test_project
-                    with patch(
-                        "src.services.project.project_service.get_project_by_id",
-                        return_value=mock_project,
-                    ):
-                        task_create = TaskCreate(
-                            name="invalid name with spaces",
-                            project_id=test_project.id,
-                            root_dir="/tmp/invalid_task",
-                            settings_yaml="task: settings",
-                            goal="Example goal",
-                        )
+        mock_project = AsyncMock()
+        mock_project.db_object = test_project
+        with patch(
+            "src.services.project.project_service.get_project_by_id",
+            return_value=mock_project,
+        ):
+            task_create = TaskCreate(
+                name="invalid name with spaces",
+                project_id=test_project.id,
+                root_dir="/tmp/invalid_task",
+                settings_yaml="task: settings",
+                goal="Example goal",
+            )
 
-                        # Should raise ValueError for non-filesafe name
-                        with pytest.raises(ValueError, match="is not filesafe"):
-                            await task_service.create_task(task_create)
+            # Should raise ValueError for non-filesafe name
+            with pytest.raises(ValueError, match="is not filesafe"):
+                await task_service.create_task(task_create, async_session)
 
     @pytest.mark.asyncio
     async def test_create_task_project_not_found(self, task_service, async_session):
         """Test creating a task for non-existent project returns None."""
-        with patch("src.services.task.get_db_session", return_value=async_session):
-            with patch("src.services.chat.get_db_session", return_value=async_session):
-                with patch(
-                    "src.services.message.get_db_session", return_value=async_session
-                ):
-                    with patch(
-                        "src.services.project.project_service.get_project_by_id",
-                        return_value=None,
-                    ):
-                        task_create = TaskCreate(
-                            name="test-task",
-                            project_id=9999,
-                            root_dir="/tmp/test_task",
-                            settings_yaml="task: settings",
-                            goal="Example goal",
-                        )
+        with patch(
+            "src.services.project.project_service.get_project_by_id",
+            return_value=None,
+        ):
+            task_create = TaskCreate(
+                name="test-task",
+                project_id=9999,
+                root_dir="/tmp/test_task",
+                settings_yaml="task: settings",
+                goal="Example goal",
+            )
 
-                        result = await task_service.create_task(task_create)
-                        assert result is None
+            result = await task_service.create_task(task_create, async_session)
+            assert result is None
 
     @pytest.mark.asyncio
     async def test_get_task_by_id(self, task_service, async_session, test_project):

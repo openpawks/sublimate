@@ -37,20 +37,18 @@ class TestProjectService:
         self, project_service, async_session, test_project
     ):
         """Test retrieving a project by ID."""
-        with patch("src.services.project.get_db_session", return_value=async_session):
-            result = await project_service.get_project_by_id(test_project.id)
+        result = await project_service.get_project_by_id(test_project.id, async_session)
 
-            assert result is not None
-            assert result.db_object.id == test_project.id
-            assert result.db_object.name == test_project.name
+        assert result is not None
+        assert result.db_object.id == test_project.id
+        assert result.db_object.name == test_project.name
 
     @pytest.mark.asyncio
     async def test_get_project_by_id_not_found(self, project_service, async_session):
         """Test retrieving a non-existent project returns None."""
-        with patch("src.services.project.get_db_session", return_value=async_session):
-            result = await project_service.get_project_by_id(9999)
+        result = await project_service.get_project_by_id(9999, async_session)
 
-            assert result is None
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_get_projects_by_user(
@@ -137,7 +135,9 @@ class TestProjectService:
         """Test deleting a project."""
         with patch("src.services.project.get_db_session", return_value=async_session):
             # First verify project exists
-            result = await project_service.get_project_by_id(test_project.id)
+            result = await project_service.get_project_by_id(
+                test_project.id, async_session
+            )
             assert result is not None
 
             # Delete the project
@@ -145,7 +145,9 @@ class TestProjectService:
             assert delete_result is True
 
             # Verify project no longer exists
-            result = await project_service.get_project_by_id(test_project.id)
+            result = await project_service.get_project_by_id(
+                test_project.id, async_session
+            )
             assert result is None
 
     @pytest.mark.asyncio
@@ -173,6 +175,4 @@ class TestProjectService:
     @pytest.mark.asyncio
     async def test_filesafe_name_validation(self):
         """Test filesafe name validation in task creation."""
-        # This would be tested through the task service, not project service
-        # Project names don't have filesafe requirements in the schema
         pass

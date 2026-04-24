@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.schemas.project import ProjectCreate, ProjectUpdate
 
 from sqlalchemy import select, update, delete
+from sqlalchemy.orm import selectinload
 
 
 class ProjectService:
@@ -43,24 +44,18 @@ class ProjectService:
             id: project id
             db: optional database session (creates one if not provided)
         """
-        close_db = False
-        if db is None:
-            db = await get_db_session()
-            close_db = True
 
-        try:
-            result = await db.execute(
-                select(models.Project).where(models.Project.id == id)
-            )
-            project_db = result.scalars().first()
+        result = await db.execute(
+            select(models.Project)
+            .options(selectinload(models.Project.tasks))
+            .where(models.Project.id == id)
+        )
+        project_db = result.scalars().first()
 
-            if project_db:
-                return self.get_base_project(project_db)
-            else:
-                return None
-        finally:
-            if close_db:
-                await db.close()
+        if project_db:
+            return self.get_base_project(project_db)
+        else:
+            return None
 
     async def get_projects_by_user(
         self, user_id: int, db: AsyncSession | None = None

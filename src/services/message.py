@@ -1,8 +1,8 @@
 from src.db import models
-from src.db.database import get_db_session
 
 from src.schemas.message import MessageCreate, MessageUpdate
 
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select, update, delete
 
@@ -11,16 +11,14 @@ class MessageService:
     def __init__(self):
         pass
 
-    async def create_message(self, message: MessageCreate):
+    async def create_message(self, message: MessageCreate, db: AsyncSession):
         """
         Create a message for a given chat_id
         Also attempt to update the chat object in memory's data
         """
         from src.services import registry
 
-        db = await get_db_session()
-
-        chat = await registry.chat_service.get_chat_by_id(message.chat_id)
+        chat = await registry.chat_service.get_chat_by_id(message.chat_id, db)
 
         if not chat:
             return None
@@ -36,41 +34,38 @@ class MessageService:
 
         return message_obj
 
-    async def get_message_by_id(self, id: int):
+    async def get_message_by_id(self, id: int, db: AsyncSession):
         """
         Get a message by id
         """
-        db = await get_db_session()
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()
         return message
 
-    async def get_messages_by_chat(self, chat_id: int):
+    async def get_messages_by_chat(self, chat_id: int, db: AsyncSession):
         """
         Get all messages for a chat
         """
-        db = await get_db_session()
         result = await db.execute(
             select(models.Message).where(models.Message.chat_id == chat_id)
         )
         messages = result.scalars().all()
         return messages
 
-    async def get_all_messages(self):
+    async def get_all_messages(self, db: AsyncSession):
         """
         Get all messages
         """
-        db = await get_db_session()
         result = await db.execute(select(models.Message))
         messages = result.scalars().all()
         return messages
 
-    async def update_message(self, id: int, message_update: MessageUpdate):
+    async def update_message(
+        self, id: int, message_update: MessageUpdate, db: AsyncSession
+    ):
         """
         Update a message
         """
-        db = await get_db_session()
-
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()
         if not message:
@@ -90,12 +85,10 @@ class MessageService:
 
         return message
 
-    async def delete_message(self, id: int) -> bool:
+    async def delete_message(self, id: int, db: AsyncSession) -> bool:
         """
         Delete a message by id
         """
-        db = await get_db_session()
-
         result = await db.execute(select(models.Message).where(models.Message.id == id))
         message = result.scalars().first()
         if not message:

@@ -1,7 +1,7 @@
 from src.orchestration.task import BaseTask
 from src.db import models
 from src.db.database import get_db_session
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schemas.task import TaskCreate, TaskUpdate
 
@@ -95,15 +95,13 @@ class TaskService:
         tasks = result.scalars().all()
         return [self.get_base_task(task) for task in tasks]
 
-    async def create_task_db(self, task: TaskCreate):
+    async def create_task_db(self, task: TaskCreate, db: AsyncSession):
         """
         Create a new task in the database
         """
         from src.services import registry
 
-        db = await get_db_session()
-
-        project = await registry.project_service.get_project_by_id(task.project_id)
+        project = await registry.project_service.get_project_by_id(task.project_id, db)
         if not project:
             # project doesn't exist
             return None
@@ -127,12 +125,12 @@ class TaskService:
         await db.refresh(project.db_object)
 
         # Create a chat for the task
-        chat = await registry.chat_service.create_chat(task_id=new_task.id)
+        chat = await registry.chat_service.create_chat(task_id=new_task.id, db=db)
         new_task.chat_id = chat.db_object.id
 
         # create a message within that new chat
         for i in range(0, len(task.goal), 4096):
-            await chat.add_message(role="user", content=task.goal[i : i + 4096])
+            await chat.add_message(db=db, role="user", content=task.goal[i : i + 4096])
 
         await db.commit()
 
@@ -146,11 +144,11 @@ class TaskService:
 
         return task_with_relations
 
-    async def create_task(self, task: TaskCreate):
+    async def create_task(self, task: TaskCreate, db: AsyncSession):
         """
         Helper function to create a task
         """
-        task_obj = await self.create_task_db(task)
+        task_obj = await self.create_task_db(task, db)
         if task_obj:
             return self.get_base_task(task_obj)
         return None

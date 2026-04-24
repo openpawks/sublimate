@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Depends, status
+from typing import Annotated
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.db.database import get_db_session
 
 from ...services.chat import chat_service
 
@@ -15,40 +18,50 @@ def _chat_to_dict(chat) -> dict:
 
 
 @router.get("")
-async def get_chats(task_id: int | None = None):
+async def get_chats(
+    db: Annotated[AsyncSession, Depends(get_db_session)], task_id: int | None = None
+):
     if task_id is not None:
-        chats = await chat_service.get_chats_by_task(task_id)
+        chats = await chat_service.get_chats_by_task(task_id, db)
     else:
-        chats = await chat_service.get_all_chats()
+        chats = await chat_service.get_all_chats(db)
     return [_chat_to_dict(c) for c in chats]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_chat(task_id: int):
-    chat = await chat_service.create_chat(task_id)
+async def create_chat(
+    task_id: int, db: Annotated[AsyncSession, Depends(get_db_session)]
+):
+    chat = await chat_service.create_chat(task_id, db)
     if not chat:
         raise HTTPException(status_code=400, detail="Failed to create chat")
     return _chat_to_dict(chat)
 
 
 @router.get("/{chat_id}")
-async def get_chat(chat_id: int):
-    chat = await chat_service.get_chat_by_id(chat_id)
+async def get_chat(chat_id: int, db: Annotated[AsyncSession, Depends(get_db_session)]):
+    chat = await chat_service.get_chat_by_id(chat_id, db)
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
     return _chat_to_dict(chat)
 
 
 @router.patch("/{chat_id}")
-async def update_chat(chat_id: int, task_id: int | None = None):
-    chat = await chat_service.update_chat(chat_id, task_id)
+async def update_chat(
+    chat_id: int,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    task_id: int | None = None,
+):
+    chat = await chat_service.update_chat(chat_id, db, task_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
     return _chat_to_dict(chat)
 
 
 @router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_chat(chat_id: int):
-    deleted = await chat_service.delete_chat(chat_id)
+async def delete_chat(
+    chat_id: int, db: Annotated[AsyncSession, Depends(get_db_session)]
+):
+    deleted = await chat_service.delete_chat(chat_id, db)
     if not deleted:
         raise HTTPException(status_code=404, detail="Chat not found")

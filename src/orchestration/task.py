@@ -3,6 +3,8 @@ from src.orchestration.tools import _create_tool
 
 from src.db import models
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.schemas.task import TaskUpdate
 
 from git.exc import NoSuchPathError
@@ -108,10 +110,11 @@ class BaseTask:
         self.close()
         return
 
-    async def request_human_approval(self):
+    async def request_human_approval(self, db: AsyncSession):
         """Request human approval or human input"""
         self.repeating_until_complete = False
         await self.chat.add_message(
+            db=db,
             role="system",
             content="Human approval requested. Task paused.",
             username="system",
@@ -245,7 +248,7 @@ class BaseTask:
     async def close(self):
         self.project.close_task(self.db_object)
 
-    async def repeat_until_complete(self, max_iterations: int = 100):
+    async def repeat_until_complete(self, db: AsyncSession, max_iterations: int = 100):
         """
         Repeat this task, until the agent requests to stop
 
@@ -266,6 +269,7 @@ class BaseTask:
 
             await self.chat.add_message(
                 # sender_id to be added later
+                db=db,
                 role="assistant",
                 content=output.content,
                 username=agent.name,
@@ -276,6 +280,7 @@ class BaseTask:
                 # Safety: stop repeating if we hit max iterations
                 self.repeating_until_complete = False
                 await self.chat.add_message(
+                    db=db,
                     role="system",
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",

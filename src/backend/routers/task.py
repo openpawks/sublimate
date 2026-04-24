@@ -1,7 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Depends, status
 
 from ...services.task import task_service
 from ...schemas.task import TaskCreate, TaskUpdate
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
+
+from src.db.database import get_db_session
 
 router = APIRouter()
 
@@ -31,8 +36,10 @@ async def get_tasks(project_id: int | None = None):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_task(new_task: TaskCreate):
-    task = await task_service.create_task(new_task)
+async def create_task(
+    new_task: TaskCreate, db: Annotated[AsyncSession, Depends(get_db_session)]
+):
+    task = await task_service.create_task(new_task, db)
     if not task:
         raise HTTPException(status_code=400, detail="Failed to create task")
     return _task_to_dict(task)
