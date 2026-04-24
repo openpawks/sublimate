@@ -1,10 +1,7 @@
 from src.orchestration.agent import AgentFactory
 from src.orchestration.tools import _create_tool
 
-from src.db import models
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from src.schemas.data import TaskData
 from src.schemas.task import TaskUpdate
 
 from git.exc import NoSuchPathError
@@ -14,19 +11,23 @@ import git
 class BaseTask:
     def __init__(
         self,
-        db_object: models.Task,
+        data: TaskData,
+        project=None,
+        chat=None,
     ):
         """
         Creates a BaseTask object.
         The BaseTask object invokes agents until they finish their task
+
+        Args:
+            data: TaskData object with task configuration
+            project: optional pre-resolved BaseProject reference
+            chat: optional pre-resolved BaseChat reference
         """
-        from src.services import registry
-
-        self.db_object = db_object
-
-        self.project = registry.project_service.get_base_project(self.db_object.project)
-        self.chat = registry.chat_service.get_base_chat(self.db_object.chat)
-        self.name = self.db_object.name
+        self._data = data
+        self._project = project
+        self._chat = chat
+        self.name = self._data.name
 
         self.task_tools = []
 
@@ -36,13 +37,43 @@ class BaseTask:
 
         self.repo = None
 
+    @property
+    def project(self):
+        if self._project is None:
+            from src.services import registry
+
+            self._project = registry.project_service.get_base_project_by_id(
+                self._data.project_id
+            )
+        return self._project
+
+    @project.setter
+    def project(self, value):
+        self._project = value
+
+    @property
+    def chat(self):
+        if self._chat is None:
+            from src.services import registry
+
+            self._chat = registry.chat_service.get_base_chat_by_id(self._data.chat_id)
+        return self._chat
+
+    @chat.setter
+    def chat(self, value):
+        self._chat = value
+
+    @property
+    def open(self):
+        return self._data.open
+
     def init_repo(self):
         try:
-            self.repo = git.Repo(self.db_object.root_dir)
+            self.repo = git.Repo(self._data.root_dir)
             assert not self.repo.bare
             return self.repo
         except (NoSuchPathError, AssertionError) as e:
-            print(f"Path {self.db_object.root_dir} is wrong!\nERROR: {e}")
+            print(f"Path {self._data.root_dir} is wrong!\nERROR: {e}")
 
     def get_repo(self):
         if self.repo:
@@ -70,10 +101,8 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
-        # Tools are wrapped for LangChain compatibility
         self.task_tools = [_create_tool(x) for x in self.task_tools]
 
-        # clear all agents,
         for agent in self.agents.values():
             agent.agent = None
 
@@ -87,30 +116,28 @@ class BaseTask:
         """
         agent.init_agent(tools=[*self.task_tools, *agent.tools])
 
-    # TASK SPECIFIC TOOLS
     def read_todos(self):
         """Read todo list"""
-        return self.db_object.todos
+        return self._data.todos
 
     async def edit_todos(self, todos: str):
         """Write/edit todo list, rewrite the whole thing, with marks for what has already been done."""
         from src.services import registry
 
         updated_task = await registry.task_service.update_task(
-            self.db_object.id, TaskUpdate(todos=todos)
+            self._data.id, TaskUpdate(todos=todos)
         )
         if updated_task:
-            self.db_object.todos = todos
+            self._data.todos = todos
         return updated_task
 
     def close_task(self):
         """Close task when you think its done. Do this when you are sure, and tests have passed."""
-        # when finished
         self.repeating_until_complete = False
         self.close()
         return
 
-    async def request_human_approval(self, db: AsyncSession):
+    async def request_human_approval(self, db):
         """Request human approval or human input"""
         self.repeating_until_complete = False
         await self.chat.add_message(
@@ -123,7 +150,6 @@ class BaseTask:
     def next_agent(self):
         """Cycle the conversation to the next agent"""
         if not self.active_agent_name or self.active_agent_name not in self.agents:
-            # No active agent, set to first agent if any
             if self.agents:
                 self.set_active_agent(list(self.agents.keys())[0])
                 return "Success"
@@ -136,7 +162,7 @@ class BaseTask:
         if next_index < len(keys):
             self.set_active_agent(keys[next_index])
         else:
-            self.set_active_agent(keys[0])  # wrap around
+            self.set_active_agent(keys[0])
         return "Success"
 
     def set_active_agent(self, name: str):
@@ -216,8 +242,6 @@ class BaseTask:
         Args:
             messages: optional extra messages if you want to prompt inject (not saved)
         """
-        # NOTE: I want to stream this later so that we can have live chat streaming in the application
-        # not important while we are still building the service
         if not agent.agent:
             self.init_agent(agent)
         return agent.ainvoke([*self.chat.get_messages(), *messages])
@@ -246,13 +270,14 @@ class BaseTask:
         return repo.index.commit(message)
 
     async def close(self):
-        self.project.close_task(self.db_object)
+        await self.project.close_task(self._data.id, self._data.name)
 
-    async def repeat_until_complete(self, db: AsyncSession, max_iterations: int = 100):
+    async def repeat_until_complete(self, db, max_iterations: int = 100):
         """
         Repeat this task, until the agent requests to stop
 
         Args:
+            db: database session
             max_iterations: How many messages until it stops automatically
         """
         if not self.repo:
@@ -268,7 +293,6 @@ class BaseTask:
             output = await self.invoke_agent(self.agent, self.chat.get_messages())
 
             await self.chat.add_message(
-                # sender_id to be added later
                 db=db,
                 role="assistant",
                 content=output.content,
@@ -277,7 +301,6 @@ class BaseTask:
             iteration += 1
 
             if iteration >= max_iterations:
-                # Safety: stop repeating if we hit max iterations
                 self.repeating_until_complete = False
                 await self.chat.add_message(
                     db=db,
@@ -285,11 +308,9 @@ class BaseTask:
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",
                 )
-            # Auto commit on completion
             if self.repo and self.open:
                 try:
                     self.commit_changes("Auto commit on task completion")
                 except Exception as e:
-                    # Log error but don't fail
                     print(f"Auto commit failed: {e}")
         return

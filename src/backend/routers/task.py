@@ -12,17 +12,17 @@ router = APIRouter()
 
 
 def _task_to_dict(task) -> dict:
-    db = task.db_object
+    d = task._data
     return {
-        "id": db.id,
-        "name": db.name,
-        "project_id": db.project_id,
-        "root_dir": db.root_dir,
-        "open": db.open,
-        "todos": db.todos,
-        "settings_yaml": db.settings_yaml,
-        "chat_id": db.chat_id,
-        "created_at": db.created_at.isoformat() if db.created_at else None,
+        "id": d.id,
+        "name": d.name,
+        "project_id": d.project_id,
+        "root_dir": d.root_dir,
+        "open": d.open,
+        "todos": d.todos,
+        "settings_yaml": d.settings_yaml,
+        "chat_id": d.chat_id,
+        "created_at": d.created_at.isoformat() if d.created_at else None,
     }
 
 

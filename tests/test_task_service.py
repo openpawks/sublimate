@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from src.services.task import TaskService
 from src.schemas.task import TaskCreate, TaskUpdate
+from src.schemas.data import is_filesafe
 from src.db import models
 
 
@@ -35,9 +36,9 @@ class TestTaskService:
             result = await task_service.create_task(task_create, async_session)
 
             assert result is not None
-            assert result.db_object.name == "new-task"
-            assert result.db_object.project_id == test_project.id
-            assert result.db_object.todos == "Task todos"
+            assert result._data.name == "new-task"
+            assert result._data.project_id == test_project.id
+            assert result._data.todos == "Task todos"
 
     @pytest.mark.asyncio
     async def test_create_task_invalid_name(
@@ -108,8 +109,8 @@ class TestTaskService:
             result = await task_service.get_task_by_id(task.id)
 
             assert result is not None
-            assert result.db_object.id == task.id
-            assert result.db_object.name == "test-task"
+            assert result._data.id == task.id
+            assert result._data.name == "test-task"
 
     @pytest.mark.asyncio
     async def test_get_task_by_id_not_found(self, task_service, async_session):
@@ -158,7 +159,7 @@ class TestTaskService:
             result = await task_service.get_tasks_by_project(test_project.id)
 
             assert len(result) >= 2
-            task_names = [t.db_object.name for t in result]
+            task_names = [t._data.name for t in result]
             assert "task-1" in task_names
             assert "task-2" in task_names
 
@@ -171,7 +172,7 @@ class TestTaskService:
             # Should have at least the tasks we created in fixtures
             assert len(result) >= 1
             # Verify our test task is in the results
-            task_ids = [t.db_object.id for t in result]
+            task_ids = [t._data.id for t in result]
             assert test_task.id in task_ids
 
     @pytest.mark.asyncio
@@ -212,10 +213,10 @@ class TestTaskService:
             result = await task_service.update_task(task.id, task_update)
 
             assert result is not None
-            assert result.db_object.name == "updated-task"
-            assert result.db_object.root_dir == "/tmp/updated_task"
-            assert result.db_object.todos == "Updated todos"
-            assert not result.db_object.open
+            assert result._data.name == "updated-task"
+            assert result._data.root_dir == "/tmp/updated_task"
+            assert result._data.todos == "Updated todos"
+            assert not result._data.open
 
     @pytest.mark.asyncio
     async def test_update_task_partial(self, task_service, async_session, test_project):
@@ -248,10 +249,10 @@ class TestTaskService:
             result = await task_service.update_task(task.id, task_update)
 
             assert result is not None
-            assert result.db_object.todos == "New todos only"
+            assert result._data.todos == "New todos only"
             # Other fields should remain unchanged
-            assert result.db_object.name == "partial-task"
-            assert result.db_object.open
+            assert result._data.name == "partial-task"
+            assert result._data.open
 
     @pytest.mark.asyncio
     async def test_update_task_not_found(self, task_service, async_session):
@@ -306,26 +307,24 @@ class TestTaskService:
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_filesafe_validation(self, task_service):
+    async def test_filesafe_validation(self):
         """Test filesafe name validation."""
-        # Valid names
-        assert task_service._is_filesafe("valid-name")
-        assert task_service._is_filesafe("valid_name")
-        assert task_service._is_filesafe("valid.name")
-        assert task_service._is_filesafe("valid123")
-        assert task_service._is_filesafe("VALID-NAME")
+        assert is_filesafe("valid-name")
+        assert is_filesafe("valid_name")
+        assert is_filesafe("valid.name")
+        assert is_filesafe("valid123")
+        assert is_filesafe("VALID-NAME")
 
-        # Invalid names
-        assert not task_service._is_filesafe("invalid name")  # space
-        assert not task_service._is_filesafe("invalid/name")  # slash
-        assert not task_service._is_filesafe("invalid\\name")  # backslash
-        assert not task_service._is_filesafe("invalid:name")  # colon
-        assert not task_service._is_filesafe("invalid*name")  # asterisk
-        assert not task_service._is_filesafe("invalid?name")  # question mark
-        assert not task_service._is_filesafe('invalid"name')  # quote
-        assert not task_service._is_filesafe("invalid<name")  # less than
-        assert not task_service._is_filesafe("invalid>name")  # greater than
-        assert not task_service._is_filesafe("invalid|name")  # pipe
+        assert not is_filesafe("invalid name")
+        assert not is_filesafe("invalid/name")
+        assert not is_filesafe("invalid\\name")
+        assert not is_filesafe("invalid:name")
+        assert not is_filesafe("invalid*name")
+        assert not is_filesafe("invalid?name")
+        assert not is_filesafe('invalid"name')
+        assert not is_filesafe("invalid<name")
+        assert not is_filesafe("invalid>name")
+        assert not is_filesafe("invalid|name")
 
     @pytest.mark.asyncio
     async def test_get_base_task_by_id(self, task_service, async_session, test_project):
@@ -358,7 +357,7 @@ class TestTaskService:
         # Now get from cache
         cached_result = task_service.get_base_task_by_id(task.id)
         assert cached_result is not None
-        assert cached_result.db_object.id == task.id
+        assert cached_result._data.id == task.id
 
     @pytest.mark.asyncio
     async def test_get_base_task_by_id_not_found(self, task_service):

@@ -28,7 +28,7 @@ class TestChatService:
         result = await chat_service.create_chat(task.id, async_session)
 
         assert result is not None
-        assert result.db_object.task_id == task.id
+        assert result._data.task_id == task.id
 
     @pytest.mark.asyncio
     async def test_get_chat_by_id(self, chat_service, async_session, test_chat):
@@ -36,8 +36,8 @@ class TestChatService:
         result = await chat_service.get_chat_by_id(test_chat.id, async_session)
 
         assert result is not None
-        assert result.db_object.id == test_chat.id
-        assert result.db_object.task_id == test_chat.task_id
+        assert result._data.id == test_chat.id
+        assert result._data.task_id == test_chat.task_id
 
     @pytest.mark.asyncio
     async def test_get_chat_by_id_not_found(self, chat_service, async_session):
@@ -68,7 +68,7 @@ class TestChatService:
         result = await chat_service.get_chats_by_task(task.id, async_session)
 
         assert len(result) == 2
-        chat_ids = [c.db_object.id for c in result]
+        chat_ids = [c._data.id for c in result]
         assert chat1.id in chat_ids
         assert chat2.id in chat_ids
 
@@ -78,7 +78,7 @@ class TestChatService:
         result = await chat_service.get_all_chats(async_session)
 
         assert len(result) >= 1
-        assert any(c.db_object.id == test_chat.id for c in result)
+        assert any(c._data.id == test_chat.id for c in result)
 
     @pytest.mark.asyncio
     async def test_update_chat(self, chat_service, async_session, test_project):
@@ -113,7 +113,7 @@ class TestChatService:
         result = await chat_service.update_chat(chat.id, async_session, new_task.id)
 
         assert result is not None
-        assert result.db_object.task_id == new_task.id
+        assert result._data.task_id == new_task.id
 
     @pytest.mark.asyncio
     async def test_update_chat_no_change(self, chat_service, async_session, test_chat):
@@ -124,7 +124,7 @@ class TestChatService:
         result = await chat_service.update_chat(test_chat.id, async_session, None)
 
         assert result is not None
-        assert result.db_object.task_id == original_task_id
+        assert result._data.task_id == original_task_id
 
     @pytest.mark.asyncio
     async def test_update_chat_not_found(self, chat_service, async_session):
@@ -178,7 +178,7 @@ class TestChatService:
         # Should now be in cache
         cached = chat_service.get_base_chat_by_id(test_chat.id)
         assert cached is not None
-        assert cached.db_object.id == test_chat.id
+        assert cached._data.id == test_chat.id
 
         # Second get should use cache
         result2 = await chat_service.get_chat_by_id(test_chat.id, async_session)
@@ -196,4 +196,4 @@ class TestChatService:
         # Should be retrievable
         result = await chat_service.get_chat_by_id(chat.id, async_session)
         assert result is not None
-        assert result.db_object.task_id is None
+        assert result._data.task_id is None

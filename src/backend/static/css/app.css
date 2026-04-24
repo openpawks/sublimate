@@ -1,0 +1,310 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #fff;
+  color: #111;
+  line-height: 1.5;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: #111;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.sidebar-header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0.5rem 0;
+}
+
+.nav-link {
+  display: block;
+  padding: 0.6rem 1rem;
+  color: #999;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.1s, background 0.1s;
+}
+
+.nav-link:hover {
+  color: #fff;
+  background: #222;
+}
+
+.nav-link.active {
+  color: #fff;
+  background: #333;
+}
+
+.nav-divider {
+  height: 1px;
+  background: #333;
+  margin: 0.5rem 1rem;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* View header */
+.view-header {
+  margin-bottom: 1.5rem;
+}
+
+.view-header h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.view-header p {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.view-header .back-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: #999;
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+}
+
+.view-header .back-link:hover {
+  color: #111;
+}
+
+/* Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid #111;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.data-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.data-table tr:hover td {
+  background: #f5f5f5;
+}
+
+.data-table .clickable {
+  cursor: pointer;
+}
+
+/* Detail table (key-value) */
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.detail-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #555;
+  width: 140px;
+  vertical-align: top;
+}
+
+.detail-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Filters and controls */
+.filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filter-bar label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.filter-bar select {
+  border: 1px solid #111;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  background: #fff;
+  min-width: 200px;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #111;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.form-group textarea {
+  max-width: 500px;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn {
+  border: 1px solid #111;
+  padding: 0.5rem 1.2rem;
+  font: inherit;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.btn:hover {
+  background: #eee;
+}
+
+.btn-primary {
+  background: #111;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #333;
+}
+
+.btn-danger {
+  border-color: #c33;
+  color: #c33;
+}
+
+.btn-danger:hover {
+  background: #c33;
+  color: #fff;
+}
+
+/* Empty states */
+.empty-state {
+  padding: 2rem 0;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid #111;
+}
+
+.badge-open {
+  border-color: #2a7;
+  color: #2a7;
+}
+
+.badge-closed {
+  border-color: #999;
+  color: #999;
+}
+
+/* Flash messages */
+.flash {
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1rem;
+  border: 1px solid #111;
+  font-size: 0.85rem;
+}
+
+.flash-error {
+  border-color: #c33;
+  color: #c33;
+}
+
+.flash-success {
+  border-color: #2a7;
+  color: #2a7;
+}
+
+/* Meta text */
+.meta {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+/* Section action bar */
+.section-actions {
+  margin-bottom: 1.5rem;
+}

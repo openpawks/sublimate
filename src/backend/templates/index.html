@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sublimate</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h1>Sublimate</h1>
+      </div>
+      <ul class="nav-list">
+        <li><a href="#" class="nav-link" data-view="projects">Projects</a></li>
+        <li><a href="#" class="nav-link" data-view="tasks">Tasks</a></li>
+        <li><a href="#" class="nav-link" data-view="project-tasks">Project / Tasks</a></li>
+        <li><a href="#" class="nav-link" data-view="providers">Providers</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#" class="nav-link" data-view="create-project">+ New Project</a></li>
+        <li><a href="#" class="nav-link" data-view="create-task">+ New Task</a></li>
+        <li><a href="#" class="nav-link" data-view="create-provider">+ Connect Provider</a></li>
+      </ul>
+    </nav>
+    <main class="content">
+      <div id="view-container"></div>
+    </main>
+  </div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

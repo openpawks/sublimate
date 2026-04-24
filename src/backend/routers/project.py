@@ -7,14 +7,14 @@ router = APIRouter()
 
 
 def _project_to_dict(project) -> dict:
-    db = project.db_object
+    d = project._data
     return {
-        "id": db.id,
-        "name": db.name,
-        "user_id": db.user_id,
-        "root_dir": db.root_dir,
-        "settings_yaml": db.settings_yaml,
-        "created_at": db.created_at.isoformat() if db.created_at else None,
+        "id": d.id,
+        "name": d.name,
+        "user_id": d.user_id,
+        "root_dir": d.root_dir,
+        "settings_yaml": d.settings_yaml,
+        "created_at": d.created_at.isoformat() if d.created_at else None,
     }
 
 

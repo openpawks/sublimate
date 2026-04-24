@@ -23,8 +23,19 @@ async def router_engine():
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, name, password_hash, created_at) VALUES (1, 'testuser', 'hash', '2024-01-01 00:00:00')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, name, password_hash, created_at) VALUES (2, 'testuser2', 'hash', '2024-01-01 00:00:00')"
+            )
+        )
     yield engine
     async with engine.begin() as conn:
+        await conn.execute(text("PRAGMA foreign_keys = OFF"))
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
@@ -63,6 +74,7 @@ async def client(router_session):
     async def mock_get_db_session():
         return router_session
 
+    import src.db.database
     import src.services.project
     import src.services.agent
     import src.services.chat
@@ -70,6 +82,7 @@ async def client(router_session):
     import src.services.provider
     import src.services.task
 
+    src.db.database.get_db_session = mock_get_db_session
     for mod in [
         src.services.project,
         src.services.agent,

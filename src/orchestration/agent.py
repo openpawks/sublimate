@@ -1,7 +1,7 @@
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
-from src.db import models
+from src.schemas.data import AgentData
 import yaml
 
 
@@ -34,8 +34,6 @@ class WorkerAgent:
         """
         Create the agent object, with tools and such
         """
-        # TODO: tool retry middleware not yet implemented
-        # - also add tools, unsure how current tools will integrate with this
         self.agent = create_agent(model=self.model, system_prompt=self.prompt, **kwargs)
 
     def ainvoke(self, messages: list, *args, **kwargs):
@@ -65,13 +63,7 @@ class ChatAgent:
 class AgentFactory:
     def __init__(
         self,
-        db_object: models.Agent,
-        # provider_name: str,  # provider name, eg, deepseek
-        # model_name: str,
-        # name: str = "",  # okay, technically, we _dont_ need a name.
-        # prompt: str = "",
-        # heartbeat_prompt: str = "",
-        # agent_type=WorkerAgent,
+        data: AgentData,
         **kwargs,
     ):
         """
@@ -80,25 +72,18 @@ class AgentFactory:
         So set your config for the agent here.
 
         Args:
-            name: agent nickname
-            provider_name: provider_name, eg "deepseek", "openai", "ollama"
-            model_name: model_name, eg "deepseek-reasoner", "gpt-5", "llama3.2"
-            prompt: prompt for agent
-            heartbeat_prompt: prompt for heartbeat
-            agent_type: type of agent it spawns
+            data: AgentData object with configuration (name, provider, model, prompts, settings)
         """
+        self._data = data
 
-        self.db_object = db_object
+        self.name = self._data.name
+        self.provider_name = self._data.provider_id
+        self.model_name = self._data.model_name
+        self.prompt = self._data.prompt
+        self.heartbeat_prompt = self._data.heartbeat_prompt
 
-        self.name = self.db_object.name
-        self.provider_name = self.db_object.provider_id
-        self.model_name = self.db_object.model_name
-        self.prompt = self.db_object.prompt
-        self.heartbeat_prompt = self.db_object.heartbeat_prompt
-
-        # Parse settings_yaml as YAML for kwargs
         try:
-            self.kwargs = yaml.safe_load(self.db_object.settings_yaml or "") or {}
+            self.kwargs = yaml.safe_load(self._data.settings_yaml or "") or {}
         except yaml.YAMLError:
             self.kwargs = {}
 
