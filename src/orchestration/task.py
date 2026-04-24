@@ -111,7 +111,7 @@ class BaseTask:
         # self.task_tools = [_create_tool(x) for x in self.task_tools]
 
         for agent in self.agents.values():
-            agent.tools = self.task_tools
+            # agent.tools = self.task_tools
             agent.agent = None
 
     def init_all(self):
@@ -147,7 +147,7 @@ class BaseTask:
         return
 
     def next_agent(self):
-        """Cycle the conversation to the next agent"""
+        """Cycle the conversation to the next agent, useful if you need confirmation or clarification on something"""
         if not self.active_agent_name or self.active_agent_name not in self.agents:
             if self.agents:
                 self.set_active_agent(list(self.agents.keys())[0])
@@ -351,10 +351,10 @@ class BaseTask:
 
         blocklist = [
             ";",
-            "&&",
-            "||",
-            "|",
-            "`",
+            # "&&",
+            # "||",
+            # "|",
+            # "`",
             "$(",  # chaining
             "..",
             "~",  # path traversal
@@ -467,7 +467,9 @@ class BaseTask:
         self.repeating_until_complete = False
         await self.project.close_task(self._data.id, self._data.name)
 
-    async def repeat_until_complete(self, db, max_iterations: int = 100):
+    async def repeat_until_complete(
+        self, db, max_iterations: int = 100, auto_commit: bool = True
+    ):
         """
         Repeat this task, until the agent requests to stop
 
@@ -512,9 +514,11 @@ class BaseTask:
                     content=f"Stopped after {max_iterations} iterations (safety limit).",
                     username="system",
                 )
-            if self.repo and self.open:
-                try:
-                    self.commit_changes("Auto commit on task completion")
-                except Exception as e:
-                    print(f"Auto commit failed: {e}")
+
+        if self.repo and self.open and auto_commit:
+            try:
+                self.commit_changes("Auto commit on task completion")
+            except Exception as e:
+                print(f"Auto commit failed: {e}")
+
         return
