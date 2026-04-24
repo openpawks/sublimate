@@ -165,7 +165,7 @@ class BaseTask:
         return "Success"
 
     def set_active_agent(self, name: str):
-        """Allow another worker to work on this, should use for todos where another agent is likely more suitable."""
+        """Allow another worker to work on this, should use for design decisions where another agent is likely more suitable."""
         if name in self.agents.keys():
             self.active_agent_name = name
         else:
@@ -438,7 +438,10 @@ class BaseTask:
         """
         if not agent.agent:
             self.init_agent(agent)
-        return agent.ainvoke([*self.chat.get_messages(), *messages])
+        return agent.ainvoke(
+            [*self.chat.get_messages(), *messages],
+            config={"configurable": {"thread_id": self._data.chat_id}},
+        )
 
     def get_messages(self, *args, **kwargs):
         """
