@@ -1,5 +1,4 @@
 from src.orchestration.agent import AgentFactory
-from src.orchestration.tools import _create_tool
 
 from src.schemas.data import TaskData
 from src.schemas.task import TaskUpdate
@@ -86,11 +85,16 @@ class BaseTask:
         Clear current agent, so that agents will refresh with new tools
         """
         self.task_tools = [
-            self.read_todos,
-            self.edit_todos,
+            # self.read_todos,
+            # self.edit_todos,
             self.close,
             self.commit_changes,
-            self.request_human_approval,
+            self.tree,
+            self.write_file,
+            self.read_file,
+            self.edit_file_lines,
+            self.read_file_lines,
+            self.shell_command,
         ]
 
         if len(self.agents) > 1:
@@ -101,9 +105,11 @@ class BaseTask:
                 self.list_agents_as_text,
             ]
 
-        self.task_tools = [_create_tool(x) for x in self.task_tools]
+        # seems unneccessary actually, langchain will automatically map tools and such
+        # self.task_tools = [_create_tool(x) for x in self.task_tools]
 
         for agent in self.agents.values():
+            agent.tools = self.task_tools
             agent.agent = None
 
     def init_all(self):
@@ -116,6 +122,7 @@ class BaseTask:
         """
         agent.init_agent(tools=[*self.task_tools, *agent.tools])
 
+    # ========= AGENT TOOLS ==========
     def read_todos(self):
         """Read todo list"""
         return self._data.todos
@@ -136,16 +143,6 @@ class BaseTask:
         self.repeating_until_complete = False
         self.close()
         return
-
-    async def request_human_approval(self, db):
-        """Request human approval or human input"""
-        self.repeating_until_complete = False
-        await self.chat.add_message(
-            db=db,
-            role="system",
-            content="Human approval requested. Task paused.",
-            username="system",
-        )
 
     def next_agent(self):
         """Cycle the conversation to the next agent"""
@@ -190,6 +187,200 @@ class BaseTask:
 
         return self.agents.get(agent_name)
 
+    def _resolve_path(self, path: str) -> str:
+        """
+        Resolve a user-provided path relative to root_dir, preventing directory traversal.
+        Returns the absolute, normalized path if it's within root_dir, otherwise raises ValueError.
+        """
+        import os
+
+        root = os.path.abspath(self._data.root_dir)
+        joined = os.path.normpath(os.path.join(root, path))
+        if not joined.startswith(root):
+            raise ValueError(
+                f"Path '{path}' escapes the project root and is not allowed."
+            )
+        return joined
+
+    def tree(self, path_from: str = "./") -> str:
+        """
+        Recursively list the directory structure starting from path_from (relative to root_dir).
+        Returns a formatted string showing the tree. Prevents access outside root_dir.
+
+        Args:
+            path_from: relative directory path to start from (default: "./")
+
+        Returns:
+            A string representation of the directory tree.
+        """
+        import os
+
+        target = self._resolve_path(path_from)
+        if not os.path.isdir(target):
+            return f"Error: '{path_from}' is not a directory or does not exist."
+
+        lines = []
+        for root, dirs, files in os.walk(target):
+            rel = os.path.relpath(root, target)
+            depth = 0 if rel == "." else rel.count(os.sep) + 1
+            indent = "    " * depth
+            lines.append(f"{indent}{os.path.basename(root) if depth > 0 else '.'}/")
+            sub_indent = "    " * (depth + 1)
+            for f in files:
+                lines.append(f"{sub_indent}{f}")
+        return "\n".join(lines)
+
+    def write_file(self, file_path: str):
+        """
+        Write content to a file. The file_path is relative to root_dir.
+        Prompts the user for content via stdin. Prevents access outside root_dir.
+
+        Args:
+            file_path: relative path to the file to write
+        """
+        import os
+
+        target = self._resolve_path(file_path)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        content = input("Enter file content (Ctrl+D to finish):\n")
+        with open(target, "w") as f:
+            f.write(content)
+
+    def read_file(self, file_path: str) -> str:
+        """
+        Read and return the contents of a file. The file_path is relative to root_dir.
+        Prevents access outside root_dir.
+
+        Args:
+            file_path: relative path to the file to read
+
+        Returns:
+            The contents of the file as a string.
+        """
+        target = self._resolve_path(file_path)
+        with open(target, "r") as f:
+            return f.read()
+
+    def edit_file_lines(self, file_path: str, from_lines: int = 0, to_lines: int = 40):
+        """
+        Read specific line range from a file and prompt the user to rewrite those lines.
+        The file_path is relative to root_dir. Prevents access outside root_dir.
+        Lines are 0-indexed. After user provides replacement content, the file is updated.
+
+        Args:
+            file_path: relative path to the file
+            from_lines: start line index (0-indexed, inclusive)
+            to_lines: end line index (0-indexed, exclusive)
+        """
+        target = self._resolve_path(file_path)
+        with open(target, "r") as f:
+            all_lines = f.readlines()
+
+        if from_lines < 0 or to_lines > len(all_lines) or from_lines >= to_lines:
+            raise ValueError(
+                f"Invalid line range: {from_lines}-{to_lines}. File has {len(all_lines)} lines."
+            )
+
+        print(f"Current lines {from_lines}-{to_lines - 1}:")
+        for i in range(from_lines, to_lines):
+            print(f"{i}: {all_lines[i]}", end="")
+
+        print("\nEnter replacement content (Ctrl+D to finish):")
+        replacement = []
+        while True:
+            try:
+                line = input()
+                replacement.append(line)
+            except EOFError:
+                break
+
+        new_content = (
+            all_lines[:from_lines]
+            + [x + "\n" for x in replacement]
+            + all_lines[to_lines:]
+        )
+        with open(target, "w") as f:
+            f.writelines(new_content)
+
+    def read_file_lines(
+        self, file_path: str, from_lines: int = 0, to_lines: int = 40
+    ) -> str:
+        """
+        Read specific lines from a file. The file_path is relative to root_dir.
+        Prevents access outside root_dir. Lines are 0-indexed.
+
+        Args:
+            file_path: relative path to the file
+            from_lines: start line index (0-indexed, inclusive)
+            to_lines: end line index (0-indexed, exclusive)
+
+        Returns:
+            The requested lines joined as a string.
+        """
+        target = self._resolve_path(file_path)
+        with open(target, "r") as f:
+            all_lines = f.readlines()
+
+        if from_lines < 0 or to_lines > len(all_lines) or from_lines >= to_lines:
+            raise ValueError(
+                f"Invalid line range: {from_lines}-{to_lines}. File has {len(all_lines)} lines."
+            )
+
+        return "".join(all_lines[from_lines:to_lines])
+
+    def shell_command(self, command: str) -> str:
+        """
+        Execute a shell command within the project root directory.
+        The command runs with root_dir as the working directory to limit impact.
+        Validates the command to prevent operations that escape the project root.
+
+        Args:
+            command: the shell command to execute
+
+        Returns:
+            The stdout and stderr output of the command as a string.
+        """
+        import os
+        import re
+        import subprocess
+
+        root = os.path.abspath(self._data.root_dir)
+
+        blocklist = [
+            ";",
+            "&&",
+            "||",
+            "|",
+            "`",
+            "$(",  # chaining
+            "..",
+            "~",  # path traversal
+        ]
+        for token in blocklist:
+            if token in command:
+                raise ValueError(
+                    f"Command contains disallowed token '{token}': {command}"
+                )
+
+        redirect_out_pattern = re.compile(r"(?:^|\s)>(?:>)?\s*\S+")
+        if redirect_out_pattern.search(command):
+            raise ValueError(
+                f"Command contains output redirection which may escape root: {command}"
+            )
+
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+        output = result.stdout
+        if result.stderr:
+            output += "\n" + result.stderr
+        return output
+
+    # END OF AGENT TOOLS
     def resign_agent(self, agent_name: str):
         """Remove the agent from the task"""
         if self.get_agent(agent_name):
@@ -212,7 +403,7 @@ class BaseTask:
         if self.get_agent(agent_factory.name):
             print(f"{agent_factory.name} already assigned")
             return None
-        new_agent = agent_factory.create_worker()
+        new_agent = agent_factory.create_worker(self._data.root_dir)
         new_agent.task = self
         self.agents[new_agent.name] = new_agent
 

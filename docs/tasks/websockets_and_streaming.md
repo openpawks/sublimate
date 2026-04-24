@@ -13,11 +13,11 @@ The streaming `WS /ws/tasks/{task_id}/chat` endpoint is already planned but unim
 ```
 Client (WS)           FastAPI                WorkerAgent.astream()        Langchain
    │                     │                         │                        │
-   ├─connect────┬────────►│                         │                        │
-   │◄─accepted──┘         │                         │                        │
-   │                     │  get BaseTask by ID      │                        │
-   │                     ├─repeat_until_complete()──►                        │
-   │                     │  (with event_emitter)    │                        │
+   ├─connect────┬───────►│                         │                        │
+   │◄─accepted──┘        │                         │                        │
+   │                     │  get BaseTask by ID     │                        │
+   │                     ├─repeat_until_complete()─►                        │
+   │                     │  (with event_emitter)   │                        │
    │                     │                         ├──astream_events()─────►│
    │◄─{"type":"token"}───┤◄──emit(event)────────────┤◄──on_chat_model_stream│
    │◄─{"type":"tool_start"}                         │◄──on_tool_start       │

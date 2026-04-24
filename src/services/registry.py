@@ -56,5 +56,13 @@ class ServiceRegistry:
             self._services["task"] = task_service
         return self._services["task"]
 
+    @property
+    def checkpointer(self):
+        if "checkpointer" not in self._services:
+            from langchain.agent.checkpointer import InMemorySaver
+
+            self._services["checkpointer"] = InMemorySaver()
+        return self._services["checkpointer"]
+
 
 registry = ServiceRegistry()

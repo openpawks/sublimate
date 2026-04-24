@@ -1,7 +1,16 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import (
+    ToolRetryMiddleware,
+    TodoListMiddleware,
+    ModelRetryMiddleware,
+    FilesystemFileSearchMiddleware,
+)
 from langchain.chat_models import init_chat_model
 
 from src.schemas.data import AgentData
+from src.services import registry
+
+from pathlib import Path
 import yaml
 
 
@@ -9,6 +18,8 @@ class WorkerAgent:
     def __init__(
         self,
         model,
+        root_dir,
+        chat_id: int = -1,
         name: str = "",
         prompt: str = "",
         heartbeat_prompt: str = "",
@@ -27,6 +38,7 @@ class WorkerAgent:
         self.prompt = prompt
         self.tools = []
         self.heartbeat_prompt = heartbeat_prompt
+        self.root_dir = root_dir
 
         self.agent = None
 
@@ -34,7 +46,30 @@ class WorkerAgent:
         """
         Create the agent object, with tools and such
         """
-        self.agent = create_agent(model=self.model, system_prompt=self.prompt, **kwargs)
+        self.agent = create_agent(
+            model=self.model,
+            tools=self.tools,
+            middleware=[
+                TodoListMiddleware(),
+                ToolRetryMiddleware(
+                    max_retries=3,
+                    backoff_factor=2.0,
+                    initial_delay=1.0,
+                ),
+                ModelRetryMiddleware(
+                    max_retries=3,
+                    backoff_factor=2.0,
+                    initial_delay=1.0,
+                ),
+                FilesystemFileSearchMiddleware(
+                    root_path=self.root_dir,
+                    use_ripgrep=True,
+                ),
+            ],
+            system_prompt=self.prompt,
+            checkpointer=registry.checkpointer**kwargs,
+        )
+        return self.agent
 
     def ainvoke(self, messages: list, *args, **kwargs):
         """
@@ -96,7 +131,7 @@ class AgentFactory:
             **self.kwargs.get("model", {}),
         )
 
-    def create_worker(self):
+    def create_worker(self, root_dir: Path | str):
         """
         Create a WorkerAgent object, using some configuration settings
         from this AgentFactory
@@ -106,6 +141,7 @@ class AgentFactory:
 
         return WorkerAgent(
             model=self.model,
+            root_dir=root_dir,
             name=self.name,
             prompt=self.prompt,
             heartbeat_prompt=self.heartbeat_prompt,
