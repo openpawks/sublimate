@@ -4,6 +4,7 @@ from src.db.database import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schemas.task import TaskCreate, TaskUpdate
+from src.schemas.data import TaskData, ProjectData, ChatData, is_filesafe
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
@@ -13,48 +14,23 @@ class TaskService:
     def __init__(self):
         self.tasks_in_memory = {}
 
-    @staticmethod
-    def _is_filesafe(name: str) -> bool:
-        """
-        Check if a string is safe for use as a filename/branch name.
-        Allows alphanumeric, hyphens, underscores, dots, no spaces or slashes.
-        """
-        import re
-
-        # Allow alphanumeric, hyphen, underscore, dot
-        pattern = r"^[a-zA-Z0-9_.-]+$"
-        return bool(re.match(pattern, name))
-
     def get_base_task_by_id(self, id: int):
-        """
-        Get BaseTask by id, from memory
-
-        Args:
-            id: task id
-        """
         return self.tasks_in_memory.get(id)
 
-    def get_base_task(self, db_object: models.Task):
-        """
-        Load BaseTask into memory
-        """
-        task = self.tasks_in_memory.get(db_object.id)
+    def get_or_create_base_task(self, data: TaskData, project=None, chat=None):
+        task = self.tasks_in_memory.get(data.id)
         if task:
             return task
 
-        self.tasks_in_memory[db_object.id] = BaseTask(
-            db_object=db_object,
+        self.tasks_in_memory[data.id] = BaseTask(
+            data=data,
+            project=project,
+            chat=chat,
         )
 
-        return self.tasks_in_memory.get(db_object.id)
+        return self.tasks_in_memory.get(data.id)
 
     async def get_task_by_id(self, id: int) -> BaseTask | None:
-        """
-        Get task object by id (BaseTask object)
-
-        Args:
-            id: task id
-        """
         db = await get_db_session()
 
         result = await db.execute(
@@ -65,14 +41,11 @@ class TaskService:
         task_db = result.scalars().first()
 
         if task_db:
-            return self.get_base_task(task_db)
+            return self._build_base_task(task_db, db)
         else:
             return None
 
     async def get_tasks_by_project(self, project_id: int) -> list[BaseTask]:
-        """
-        Get all tasks for a project
-        """
         db = await get_db_session()
         result = await db.execute(
             select(models.Task)
@@ -80,12 +53,9 @@ class TaskService:
             .options(selectinload(models.Task.project), selectinload(models.Task.chat))
         )
         tasks = result.scalars().all()
-        return [self.get_base_task(task) for task in tasks]
+        return [self._build_base_task(task, db) for task in tasks]
 
     async def get_all_tasks(self) -> list[BaseTask]:
-        """
-        Get all tasks
-        """
         db = await get_db_session()
         result = await db.execute(
             select(models.Task).options(
@@ -93,20 +63,34 @@ class TaskService:
             )
         )
         tasks = result.scalars().all()
-        return [self.get_base_task(task) for task in tasks]
+        return [self._build_base_task(task, db) for task in tasks]
+
+    def _build_base_task(self, task_db: models.Task, db) -> BaseTask:
+        from src.services import registry
+
+        task_data = TaskData.model_validate(task_db)
+        chat_data = ChatData.model_validate(task_db.chat) if task_db.chat else None
+
+        project = None
+        if task_db.project:
+            project = registry.project_service.get_or_create_base_project(
+                ProjectData.model_validate(task_db.project)
+            )
+
+        chat = None
+        if chat_data:
+            chat = registry.chat_service.get_or_create_base_chat(chat_data)
+
+        return self.get_or_create_base_task(data=task_data, project=project, chat=chat)
 
     async def create_task_db(self, task: TaskCreate, db: AsyncSession):
-        """
-        Create a new task in the database
-        """
         from src.services import registry
 
         project = await registry.project_service.get_project_by_id(task.project_id, db)
         if not project:
-            # project doesn't exist
             return None
 
-        if not self._is_filesafe(task.name):
+        if not is_filesafe(task.name):
             raise ValueError(
                 f"Task name '{task.name}' is not filesafe. Only alphanumeric, underscores, hyphens, and dots allowed."
             )
@@ -120,21 +104,16 @@ class TaskService:
         )
 
         db.add(new_task)
-        await db.commit()
-        await db.refresh(new_task)
-        await db.refresh(project.db_object)
+        await db.flush()
 
-        # Create a chat for the task
         chat = await registry.chat_service.create_chat(task_id=new_task.id, db=db)
-        new_task.chat_id = chat.db_object.id
+        new_task.chat_id = chat._data.id
 
-        # create a message within that new chat
         for i in range(0, len(task.goal), 4096):
             await chat.add_message(db=db, role="user", content=task.goal[i : i + 4096])
 
         await db.commit()
 
-        # Reload task with relationships
         result = await db.execute(
             select(models.Task)
             .where(models.Task.id == new_task.id)
@@ -145,18 +124,12 @@ class TaskService:
         return task_with_relations
 
     async def create_task(self, task: TaskCreate, db: AsyncSession):
-        """
-        Helper function to create a task
-        """
         task_obj = await self.create_task_db(task, db)
         if task_obj:
-            return self.get_base_task(task_obj)
+            return self._build_base_task(task_obj, db)
         return None
 
     async def update_task(self, id: int, task_update: TaskUpdate) -> BaseTask | None:
-        """
-        Update an existing task
-        """
         db = await get_db_session()
 
         result = await db.execute(select(models.Task).where(models.Task.id == id))
@@ -173,18 +146,38 @@ class TaskService:
             await db.commit()
             await db.refresh(task_db)
 
-        return self.get_base_task(task_db)
+        task = self.get_base_task_by_id(id)
+        if task:
+            task._data = TaskData.model_validate(task_db)
+            return task
+
+        # Re-fetch with relationships to build full BaseTask
+        result = await db.execute(
+            select(models.Task)
+            .where(models.Task.id == id)
+            .options(selectinload(models.Task.project), selectinload(models.Task.chat))
+        )
+        task_db = result.scalars().first()
+        return self._build_base_task(task_db, db)
 
     async def delete_task(self, id: int) -> bool:
-        """
-        Delete a task by id
-        """
         db = await get_db_session()
 
-        result = await db.execute(select(models.Task).where(models.Task.id == id))
+        result = await db.execute(
+            select(models.Task)
+            .where(models.Task.id == id)
+            .options(selectinload(models.Task.chat))
+        )
         task_db = result.scalars().first()
         if not task_db:
             return False
+
+        if task_db.chat:
+            task_db.chat.task_id = None
+            await db.flush()
+            await db.delete(task_db.chat)
+            task_db.chat_id = None
+            await db.flush()
 
         await db.execute(delete(models.Task).where(models.Task.id == id))
         await db.commit()

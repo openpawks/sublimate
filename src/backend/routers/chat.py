@@ -9,11 +9,11 @@ router = APIRouter()
 
 
 def _chat_to_dict(chat) -> dict:
-    db = chat.db_object
+    d = chat._data
     return {
-        "id": db.id,
-        "task_id": db.task_id,
-        "created_at": db.created_at.isoformat() if db.created_at else None,
+        "id": d.id,
+        "task_id": d.task_id,
+        "created_at": d.created_at.isoformat() if d.created_at else None,
     }
 
 

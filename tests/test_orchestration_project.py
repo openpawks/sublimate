@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from src.orchestration.project import BaseProject
-from src.db import models
+from src.schemas.data import ProjectData, is_filesafe
 from src.schemas.task import TaskUpdate
 from src.services.registry import registry
 
@@ -9,7 +9,6 @@ from src.services.registry import registry
 @pytest.fixture(autouse=True)
 def reset_registry():
     """Reset registry services after each test to avoid cross-test contamination."""
-    yield
     registry._services.clear()
 
 
@@ -19,7 +18,7 @@ class TestBaseProject:
     @pytest.fixture
     def base_project(self, test_project):
         """Create a BaseProject instance for testing."""
-        return BaseProject(test_project)
+        return BaseProject(ProjectData.model_validate(test_project))
 
     @pytest.fixture
     def mock_repo(self):
@@ -31,23 +30,23 @@ class TestBaseProject:
         return repo
 
     def test_is_filesafe(self):
-        """Test _is_filesafe static method."""
-        assert BaseProject._is_filesafe("valid-name")
-        assert BaseProject._is_filesafe("valid_name")
-        assert BaseProject._is_filesafe("valid.name")
-        assert BaseProject._is_filesafe("valid123")
-        assert BaseProject._is_filesafe("VALID-NAME")
+        """Test is_filesafe function."""
+        assert is_filesafe("valid-name")
+        assert is_filesafe("valid_name")
+        assert is_filesafe("valid.name")
+        assert is_filesafe("valid123")
+        assert is_filesafe("VALID-NAME")
 
-        assert not BaseProject._is_filesafe("invalid name")  # space
-        assert not BaseProject._is_filesafe("invalid/name")  # slash
-        assert not BaseProject._is_filesafe("invalid\\name")  # backslash
-        assert not BaseProject._is_filesafe("invalid:name")  # colon
-        assert not BaseProject._is_filesafe("invalid*name")  # asterisk
-        assert not BaseProject._is_filesafe("invalid?name")  # question mark
-        assert not BaseProject._is_filesafe('invalid"name')  # quote
-        assert not BaseProject._is_filesafe("invalid<name")  # less than
-        assert not BaseProject._is_filesafe("invalid>name")  # greater than
-        assert not BaseProject._is_filesafe("invalid|name")  # pipe
+        assert not is_filesafe("invalid name")
+        assert not is_filesafe("invalid/name")
+        assert not is_filesafe("invalid\\name")
+        assert not is_filesafe("invalid:name")
+        assert not is_filesafe("invalid*name")
+        assert not is_filesafe("invalid?name")
+        assert not is_filesafe('invalid"name')
+        assert not is_filesafe("invalid<name")
+        assert not is_filesafe("invalid>name")
+        assert not is_filesafe("invalid|name")
 
     @pytest.mark.asyncio
     async def test_create_task_success(self, base_project, mock_repo):
@@ -69,22 +68,19 @@ class TestBaseProject:
                     settings_yaml="test: yaml",
                 )
 
-                # Verify git worktree add called
                 mock_repo.git.worktree.assert_called_once_with(
                     "add", "-b", "task1", "sublimate/task1", "dev"
                 )
-                # Verify task_service.create_task called with correct args
                 mock_task_service.create_task.assert_called_once()
                 call_args = mock_task_service.create_task.call_args[1]["task"]
                 assert call_args.name == "task1"
-                assert call_args.project_id == base_project.db_object.id
+                assert call_args.project_id == base_project._data.id
                 assert call_args.goal == "Test goal"
                 assert call_args.settings_yaml == "test: yaml"
                 assert result is mock_task
 
     @pytest.mark.asyncio
     async def test_create_task_invalid_name(self, base_project):
-        """Test creating a task with invalid name raises ValueError."""
         with pytest.raises(ValueError, match="is not filesafe"):
             await base_project.create_task(
                 name="invalid name", goal="Test goal", branches_from="dev"
@@ -92,34 +88,31 @@ class TestBaseProject:
 
     @pytest.mark.asyncio
     async def test_load_task_open(self, base_project):
-        """Test loading an open task."""
-        task_db_obj = MagicMock(spec=models.Task)
-        task_db_obj.open = True
-        task_db_obj.name = "existing-task"
+        mock_task_service = MagicMock()
+        mock_task = AsyncMock()
+        mock_task._data.open = True
+        mock_task_service.get_task_by_id = AsyncMock(return_value=mock_task)
+        registry._services["task"] = mock_task_service
 
         with patch.object(base_project, "get_worktree", return_value="/tmp/worktree"):
-            result = await base_project.load_task(task_db_obj)
+            result = await base_project.load_task(task_id=1, task_name="existing-task")
 
-            assert result is task_db_obj
+            assert result is mock_task
             base_project.get_worktree.assert_called_once_with("existing-task")
 
     @pytest.mark.asyncio
     async def test_load_task_closed(self, base_project):
-        """Test loading a closed task raises ValueError."""
-        task_db_obj = MagicMock(spec=models.Task)
-        task_db_obj.open = False
-        task_db_obj.name = "closed-task"
+        mock_task_service = MagicMock()
+        mock_task = AsyncMock()
+        mock_task._data.open = False
+        mock_task_service.get_task_by_id = AsyncMock(return_value=mock_task)
+        registry._services["task"] = mock_task_service
 
         with pytest.raises(ValueError, match="is closed"):
-            await base_project.load_task(task_db_obj)
+            await base_project.load_task(task_id=1, task_name="closed-task")
 
     @pytest.mark.asyncio
     async def test_close_task(self, base_project, mock_repo):
-        """Test closing a task."""
-        task_db_obj = MagicMock(spec=models.Task)
-        task_db_obj.id = 1
-        task_db_obj.name = "task-to-close"
-
         mock_task_service = MagicMock()
         mock_task_service.update_task = AsyncMock()
         mock_task_service.update_task.return_value = AsyncMock()
@@ -130,30 +123,24 @@ class TestBaseProject:
                 with patch("src.orchestration.project.os.path.join") as mock_join:
                     mock_join.return_value = "/fake/path"
 
-                    await base_project.close_task(task_db_obj, auto_merge=False)
+                    await base_project.close_task(
+                        task_id=1, task_name="task-to-close", auto_merge=False
+                    )
 
-                    # Verify task update called with TaskUpdate(open=False)
                     mock_task_service.update_task.assert_called_once_with(
                         1, TaskUpdate(open=False)
                     )
-                    # Verify worktree remove called with correct path
                     mock_repo.git.worktree.assert_called_once_with(
                         "remove", "/fake/path"
                     )
-                    # Verify os.path.join called with correct arguments
                     mock_join.assert_called_once_with(
-                        base_project.db_object.root_dir,
+                        base_project._data.root_dir,
                         "sublimate",
-                        task_db_obj.name,
+                        "task-to-close",
                     )
 
     @pytest.mark.asyncio
     async def test_close_task_with_auto_merge(self, base_project, mock_repo):
-        """Test closing a task with auto_merge=True."""
-        task_db_obj = MagicMock(spec=models.Task)
-        task_db_obj.id = 1
-        task_db_obj.name = "task-to-close"
-
         mock_task_service = MagicMock()
         mock_task_service.update_task = AsyncMock()
         mock_task_service.update_task.return_value = AsyncMock()
@@ -166,25 +153,22 @@ class TestBaseProject:
                     with patch.object(
                         base_project, "merge_task_into_dev"
                     ) as mock_merge:
-                        await base_project.close_task(task_db_obj, auto_merge=True)
+                        await base_project.close_task(
+                            task_id=1, task_name="task-to-close", auto_merge=True
+                        )
 
                         mock_task_service.update_task.assert_called_once_with(
                             1, TaskUpdate(open=False)
                         )
-                        mock_merge.assert_called_once_with(task_db_obj)
+                        mock_merge.assert_called_once_with("task-to-close")
                         mock_join.assert_called_once_with(
-                            base_project.db_object.root_dir,
+                            base_project._data.root_dir,
                             "sublimate",
-                            task_db_obj.name,
+                            "task-to-close",
                         )
 
     @pytest.mark.asyncio
     async def test_reopen_task(self, base_project):
-        """Test reopening a closed task."""
-        task_db_obj = MagicMock(spec=models.Task)
-        task_db_obj.id = 1
-        task_db_obj.name = "task-to-reopen"
-
         mock_task_service = MagicMock()
         mock_task_service.update_task = AsyncMock()
         mock_return = AsyncMock()
@@ -192,7 +176,9 @@ class TestBaseProject:
         registry._services["task"] = mock_task_service
 
         with patch.object(base_project, "get_worktree", return_value="/tmp/worktree"):
-            result = await base_project.reopen_task(task_db_obj)
+            result = await base_project.reopen_task(
+                task_id=1, task_name="task-to-reopen"
+            )
 
             mock_task_service.update_task.assert_called_once_with(
                 1, TaskUpdate(open=True)

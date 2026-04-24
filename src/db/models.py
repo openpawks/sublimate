@@ -70,7 +70,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String(50), unique=True, default="")
+    name: Mapped[nickname]
 
     project_id: Mapped[int] = fk("projects.id")
     project: Mapped["Project"] = relationship(back_populates="tasks")
@@ -198,11 +198,9 @@ class Agent(Base):
 class Provider(Base):
     __tablename__ = "providers"
 
-    id: Mapped[int_pk]
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
 
-    nickname: Mapped[str] = mapped_column(
-        String(50), primary_key=True, default="New provider"
-    )
+    nickname: Mapped[str] = mapped_column(String(50), default="New provider")
 
     name: Mapped[nickname]
     api_key: Mapped[str] = mapped_column(String(50), nullable=True)

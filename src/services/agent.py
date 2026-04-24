@@ -2,6 +2,7 @@ from src.orchestration.agent import AgentFactory
 from src.db import models
 
 from src.schemas.agent import AgentCreate, AgentUpdate
+from src.schemas.data import AgentData
 
 from sqlalchemy import select, update, delete
 
@@ -13,69 +14,50 @@ class AgentService:
         self.agents_in_memory = {}
 
     def get_agent_factory_by_id(self, id: int):
-        """
-        Get AgentFactory by id, from memory
-
-        Args:
-            id: agent id
-        """
         return self.agents_in_memory.get(id)
 
-    def get_agent_factory(self, db_object: models.Agent):
-        """
-        Load AgentFactory into memory
-        """
-        agent = self.agents_in_memory.get(db_object.id)
+    def get_or_create_agent_factory(self, data: AgentData):
+        agent = self.agents_in_memory.get(data.id)
         if agent:
             return agent
 
-        self.agents_in_memory[db_object.id] = AgentFactory(
-            db_object=db_object,
+        self.agents_in_memory[data.id] = AgentFactory(
+            data=data,
         )
 
-        return self.agents_in_memory.get(db_object.id)
+        return self.agents_in_memory.get(data.id)
 
     async def get_agent_by_id(self, id: int, db: AsyncSession) -> AgentFactory | None:
-        """
-        Get agent object by id (AgentFactory object)
-
-        Args:
-            id: agent id
-        """
-
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()
 
         if agent_db:
-            return self.get_agent_factory(agent_db)
+            data = AgentData.model_validate(agent_db)
+            return self.get_or_create_agent_factory(data)
         else:
             return None
 
     async def get_agents_by_project(
         self, project_id: int, db: AsyncSession
     ) -> list[AgentFactory]:
-        """
-        Get all agents for a project
-        """
-
         result = await db.execute(
             select(models.Agent).where(models.Agent.project_id == project_id)
         )
         agents = result.scalars().all()
-        return [self.get_agent_factory(agent) for agent in agents]
+        return [
+            self.get_or_create_agent_factory(AgentData.model_validate(a))
+            for a in agents
+        ]
 
     async def get_all_agents(self, db: AsyncSession) -> list[AgentFactory]:
-        """
-        Get all agents
-        """
         result = await db.execute(select(models.Agent))
         agents = result.scalars().all()
-        return [self.get_agent_factory(agent) for agent in agents]
+        return [
+            self.get_or_create_agent_factory(AgentData.model_validate(a))
+            for a in agents
+        ]
 
     async def create_agent_db(self, agent: AgentCreate, db: AsyncSession):
-        """
-        Create a new agent in the database
-        """
         new_agent = models.Agent(
             name=agent.name,
             project_id=agent.project_id,
@@ -93,19 +75,13 @@ class AgentService:
         return new_agent
 
     async def create_agent(self, agent: AgentCreate, db: AsyncSession):
-        """
-        Helper function to create a agent
-        """
         agent_obj = await self.create_agent_db(agent, db)
-        return self.get_agent_factory(agent_obj)
+        data = AgentData.model_validate(agent_obj)
+        return self.get_or_create_agent_factory(data)
 
     async def update_agent(
         self, id: int, agent_update: AgentUpdate, db: AsyncSession
     ) -> AgentFactory | None:
-        """
-        Update an existing agent
-        """
-
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()
         if not agent_db:
@@ -119,14 +95,16 @@ class AgentService:
             )
             await db.commit()
             await db.refresh(agent_db)
-            await db.refresh(self.get_agent_factory(agent_db).db_object)
 
-        return self.get_agent_factory(agent_db)
+        agent = self.get_agent_factory_by_id(id)
+        if agent:
+            agent._data = AgentData.model_validate(agent_db)
+
+        return self.get_agent_factory_by_id(id) or self.get_or_create_agent_factory(
+            AgentData.model_validate(agent_db)
+        )
 
     async def delete_agent(self, id: int, db: AsyncSession) -> bool:
-        """
-        Delete an agent by id
-        """
         result = await db.execute(select(models.Agent).where(models.Agent.id == id))
         agent_db = result.scalars().first()
         if not agent_db:

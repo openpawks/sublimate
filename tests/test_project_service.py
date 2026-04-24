@@ -29,8 +29,8 @@ class TestProjectService:
 
             assert result is not None
             assert result.name == "New Test Project"
-            assert result.db_object.user_id == test_user.id
-            assert result.db_object.root_dir == "/tmp/new_project.git"
+            assert result._data.user_id == test_user.id
+            assert result._data.root_dir == "/tmp/new_project.git"
 
     @pytest.mark.asyncio
     async def test_get_project_by_id(
@@ -40,8 +40,8 @@ class TestProjectService:
         result = await project_service.get_project_by_id(test_project.id, async_session)
 
         assert result is not None
-        assert result.db_object.id == test_project.id
-        assert result.db_object.name == test_project.name
+        assert result._data.id == test_project.id
+        assert result._data.name == test_project.name
 
     @pytest.mark.asyncio
     async def test_get_project_by_id_not_found(self, project_service, async_session):
@@ -69,7 +69,7 @@ class TestProjectService:
             result = await project_service.get_projects_by_user(test_user.id)
 
             assert len(result) >= 2  # Should have at least the two projects
-            project_names = [p.db_object.name for p in result]
+            project_names = [p._data.name for p in result]
             assert any(name.startswith("Test Project") for name in project_names)
             assert "Another Project" in project_names
 
@@ -80,7 +80,7 @@ class TestProjectService:
             result = await project_service.get_all_projects()
 
             assert len(result) >= 1
-            assert any(p.db_object.id == test_project.id for p in result)
+            assert any(p._data.id == test_project.id for p in result)
 
     @pytest.mark.asyncio
     async def test_update_project(self, project_service, async_session, test_project):
@@ -98,9 +98,9 @@ class TestProjectService:
             )
 
             assert result is not None
-            assert result.db_object.name == "Updated Project Name"
-            assert result.db_object.root_dir == "/tmp/updated_project.git"
-            assert result.db_object.settings_yaml == "updated: settings"
+            assert result._data.name == "Updated Project Name"
+            assert result._data.root_dir == "/tmp/updated_project.git"
+            assert result._data.settings_yaml == "updated: settings"
 
     @pytest.mark.asyncio
     async def test_update_project_partial(
@@ -116,9 +116,9 @@ class TestProjectService:
             )
 
             assert result is not None
-            assert result.db_object.name == "Partially Updated Name"
+            assert result._data.name == "Partially Updated Name"
             # Other fields should remain unchanged
-            assert result.db_object.root_dir == test_project.root_dir
+            assert result._data.root_dir == test_project.root_dir
 
     @pytest.mark.asyncio
     async def test_update_project_not_found(self, project_service, async_session):

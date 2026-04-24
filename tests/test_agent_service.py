@@ -31,10 +31,10 @@ class TestAgentService:
 
         assert result is not None
         assert result.name == "New Agent"
-        assert result.db_object.project_id == test_project.id
-        assert result.db_object.provider_id == test_provider.id
-        assert result.db_object.model_name == "test-model-v2"
-        assert result.db_object.prompt == "New agent prompt"
+        assert result._data.project_id == test_project.id
+        assert result._data.provider_id == test_provider.id
+        assert result._data.model_name == "test-model-v2"
+        assert result._data.prompt == "New agent prompt"
 
     @pytest.mark.asyncio
     async def test_get_agent_by_id(self, agent_service, async_session, test_agent):
@@ -42,9 +42,9 @@ class TestAgentService:
         result = await agent_service.get_agent_by_id(test_agent.id, async_session)
 
         assert result is not None
-        assert result.db_object.id == test_agent.id
-        assert result.db_object.name == test_agent.name
-        assert result.db_object.project_id == test_agent.project_id
+        assert result._data.id == test_agent.id
+        assert result._data.name == test_agent.name
+        assert result._data.project_id == test_agent.project_id
 
     @pytest.mark.asyncio
     async def test_get_agent_by_id_not_found(self, agent_service, async_session):
@@ -80,7 +80,7 @@ class TestAgentService:
         )
 
         assert len(result) >= 2  # Should have at least the two agents
-        agent_names = [a.db_object.name for a in result]
+        agent_names = [a._data.name for a in result]
         assert "Agent One" in agent_names
         assert "Agent Two" in agent_names
 
@@ -90,7 +90,7 @@ class TestAgentService:
         result = await agent_service.get_all_agents(async_session)
 
         assert len(result) >= 1
-        assert any(a.db_object.id == test_agent.id for a in result)
+        assert any(a._data.id == test_agent.id for a in result)
 
     @pytest.mark.asyncio
     async def test_update_agent(self, agent_service, async_session, test_agent):
@@ -110,10 +110,10 @@ class TestAgentService:
         )
 
         assert result is not None
-        assert result.db_object.name == "Updated Agent"
-        assert result.db_object.model_name == "updated-model"
-        assert result.db_object.prompt == "Updated prompt"
-        assert result.db_object.settings_yaml == "updated: settings"
+        assert result._data.name == "Updated Agent"
+        assert result._data.model_name == "updated-model"
+        assert result._data.prompt == "Updated prompt"
+        assert result._data.settings_yaml == "updated: settings"
 
     @pytest.mark.asyncio
     async def test_update_agent_partial(self, agent_service, async_session, test_agent):
@@ -126,10 +126,10 @@ class TestAgentService:
         )
 
         assert result is not None
-        assert result.db_object.name == "Partially Updated Agent"
+        assert result._data.name == "Partially Updated Agent"
         # Other fields should remain unchanged
-        assert result.db_object.prompt == test_agent.prompt
-        assert result.db_object.model_name == test_agent.model_name
+        assert result._data.prompt == test_agent.prompt
+        assert result._data.model_name == test_agent.model_name
 
     @pytest.mark.asyncio
     async def test_update_agent_not_found(self, agent_service, async_session):
@@ -185,7 +185,7 @@ class TestAgentService:
         # Should now be in cache
         cached = agent_service.get_agent_factory_by_id(test_agent.id)
         assert cached is not None
-        assert cached.db_object.id == test_agent.id
+        assert cached._data.id == test_agent.id
 
         # Second get should use cache
         result2 = await agent_service.get_agent_by_id(test_agent.id, async_session)
@@ -209,7 +209,7 @@ class TestAgentService:
         result = await agent_service.create_agent(agent_create, async_session)
 
         assert result is not None
-        assert result.db_object.name == "Minimal Agent"
-        assert result.db_object.prompt == ""
-        assert result.db_object.heartbeat_prompt == ""
-        assert result.db_object.settings_yaml == ""
+        assert result._data.name == "Minimal Agent"
+        assert result._data.prompt == ""
+        assert result._data.heartbeat_prompt == ""
+        assert result._data.settings_yaml == ""

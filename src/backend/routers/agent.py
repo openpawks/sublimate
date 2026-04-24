@@ -12,17 +12,17 @@ router = APIRouter()
 
 
 def _agent_to_dict(agent) -> dict:
-    db = agent.db_object
+    d = agent._data
     return {
-        "id": db.id,
-        "name": db.name,
-        "project_id": db.project_id,
-        "provider_id": db.provider_id,
-        "model_name": db.model_name,
-        "prompt": db.prompt,
-        "heartbeat_prompt": db.heartbeat_prompt,
-        "settings_yaml": db.settings_yaml,
-        "created_at": db.created_at.isoformat() if db.created_at else None,
+        "id": d.id,
+        "name": d.name,
+        "project_id": d.project_id,
+        "provider_id": d.provider_id,
+        "model_name": d.model_name,
+        "prompt": d.prompt,
+        "heartbeat_prompt": d.heartbeat_prompt,
+        "settings_yaml": d.settings_yaml,
+        "created_at": d.created_at.isoformat() if d.created_at else None,
     }
 
 
@@ -63,7 +63,7 @@ async def update_agent(
     agent_update: AgentUpdate,
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ):
-    agent = await agent_service.update_agent(agent_id, db, agent_update)
+    agent = await agent_service.update_agent(agent_id, agent_update, db)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return _agent_to_dict(agent)

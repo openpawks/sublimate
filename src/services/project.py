@@ -4,6 +4,7 @@ from src.db.database import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schemas.project import ProjectCreate, ProjectUpdate
+from src.schemas.data import ProjectData
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
@@ -14,55 +15,45 @@ class ProjectService:
         self.projects_in_memory = {}
 
     def get_base_project_by_id(self, id: int):
-        """
-        Get project by id (from memory), just the BaseProject object
-
-        Args:
-            id: project id
-        """
         return self.projects_in_memory.get(id)
 
-    def get_base_project(self, db_object: models.Project):
-        """
-        Load BaseProject into memory
-        """
-        project = self.projects_in_memory.get(db_object.id)
+    def get_or_create_base_project(self, data: ProjectData):
+        project = self.projects_in_memory.get(data.id)
         if project:
             return project
 
-        self.projects_in_memory[db_object.id] = BaseProject(db_object=db_object)
+        self.projects_in_memory[data.id] = BaseProject(data=data)
 
-        return self.projects_in_memory.get(db_object.id)
+        return self.projects_in_memory.get(data.id)
 
     async def get_project_by_id(
         self, id: int, db: AsyncSession | None = None
     ) -> BaseProject | None:
-        """
-        Get project by id, (BaseProject object)
+        close_db = False
+        if db is None:
+            db = await get_db_session()
+            close_db = True
 
-        Args:
-            id: project id
-            db: optional database session (creates one if not provided)
-        """
+        try:
+            result = await db.execute(
+                select(models.Project)
+                .options(selectinload(models.Project.tasks))
+                .where(models.Project.id == id)
+            )
+            project_db = result.scalars().first()
 
-        result = await db.execute(
-            select(models.Project)
-            .options(selectinload(models.Project.tasks))
-            .where(models.Project.id == id)
-        )
-        project_db = result.scalars().first()
-
-        if project_db:
-            return self.get_base_project(project_db)
-        else:
-            return None
+            if project_db:
+                data = ProjectData.model_validate(project_db)
+                return self.get_or_create_base_project(data)
+            else:
+                return None
+        finally:
+            if close_db:
+                await db.close()
 
     async def get_projects_by_user(
         self, user_id: int, db: AsyncSession | None = None
     ) -> list[BaseProject]:
-        """
-        Get all projects for a user
-        """
         close_db = False
         if db is None:
             db = await get_db_session()
@@ -73,27 +64,27 @@ class ProjectService:
                 select(models.Project).where(models.Project.user_id == user_id)
             )
             projects = result.scalars().all()
-            return [self.get_base_project(project) for project in projects]
+            return [
+                self.get_or_create_base_project(ProjectData.model_validate(p))
+                for p in projects
+            ]
         finally:
             if close_db:
                 await db.close()
 
     async def get_all_projects(self) -> list[BaseProject]:
-        """
-        Get all projects
-        """
         db = await get_db_session()
         result = await db.execute(select(models.Project))
         projects = result.scalars().all()
-        return [self.get_base_project(project) for project in projects]
+        return [
+            self.get_or_create_base_project(ProjectData.model_validate(p))
+            for p in projects
+        ]
 
     async def create_project_db(
         self,
         project: ProjectCreate,
     ):
-        """
-        Create a new project in the database
-        """
         db = await get_db_session()
 
         new_project = models.Project(
@@ -110,18 +101,13 @@ class ProjectService:
         return new_project
 
     async def create_project(self, project: ProjectCreate):
-        """
-        Helper function to create a project
-        """
         project_obj = await self.create_project_db(project)
-        return self.get_base_project(project_obj)
+        data = ProjectData.model_validate(project_obj)
+        return self.get_or_create_base_project(data)
 
     async def update_project(
         self, id: int, project_update: ProjectUpdate
     ) -> BaseProject | None:
-        """
-        Update an existing project
-        """
         db = await get_db_session()
 
         result = await db.execute(select(models.Project).where(models.Project.id == id))
@@ -139,14 +125,18 @@ class ProjectService:
             )
             await db.commit()
             await db.refresh(project_db)
-            await db.refresh(self.get_base_project(project_db).db_object)
 
-        return self.get_base_project(project_db)
+        project = self.get_base_project_by_id(id)
+        if project:
+            project._data = ProjectData.model_validate(project_db)
+        else:
+            project = self.get_or_create_base_project(
+                ProjectData.model_validate(project_db)
+            )
+
+        return project
 
     async def delete_project(self, id: int) -> bool:
-        """
-        Delete a project by id
-        """
         db = await get_db_session()
 
         result = await db.execute(select(models.Project).where(models.Project.id == id))
