@@ -95,6 +95,9 @@ class TaskService:
                 f"Task name '{task.name}' is not filesafe. Only alphanumeric, underscores, hyphens, and dots allowed."
             )
 
+        # TODO: if parent project has task under same name, not allow
+        # WARNING: VERY IMPORTANT
+
         new_task = models.Task(
             name=task.name,
             project_id=task.project_id,
@@ -126,7 +129,12 @@ class TaskService:
     async def create_task(self, task: TaskCreate, db: AsyncSession):
         task_obj = await self.create_task_db(task, db)
         if task_obj:
-            return self._build_base_task(task_obj, db)
+            # TODO: Tree ignore gitignore
+            task = self._build_base_task(task_obj, db)
+            task.chat.add_message(
+                db=db, role="system", content=task.tree(), username="system"
+            )
+            return task
         return None
 
     async def update_task(self, id: int, task_update: TaskUpdate) -> BaseTask | None:

@@ -95,6 +95,8 @@ class BaseTask:
             self.edit_file_lines,
             self.read_file_lines,
             self.shell_command,
+            self.commit_changes,
+            self.close,
         ]
 
         if len(self.agents) > 1:
@@ -257,6 +259,7 @@ class BaseTask:
         Returns:
             The contents of the file as a string.
         """
+        # TODO: no read sensitive files
         target = self._resolve_path(file_path)
         with open(target, "r") as f:
             return f.read()
@@ -461,6 +464,7 @@ class BaseTask:
         return repo.index.commit(message)
 
     async def close(self):
+        self.repeating_until_complete = False
         await self.project.close_task(self._data.id, self._data.name)
 
     async def repeat_until_complete(self, db, max_iterations: int = 100):
@@ -480,6 +484,15 @@ class BaseTask:
         while (
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
+            # TODO:
+            # - stream this agent.invoke
+            # - on task initation, run tree automatically and add that as message,
+            #   - must check if not already been sent,
+            #   - or if detects changes not managed by task, resend new
+            # NOTE:
+            # after a more comprehensive understanding of how this works, maybe
+            # this while true loop is more unneccessary than i thought,
+            # maybe it should be a for loop for assigned agents?
             agent = self.get_active_agent()
             output = await self.invoke_agent(self.agent, self.chat.get_messages())
 
