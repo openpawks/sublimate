@@ -57,6 +57,14 @@ class ServiceRegistry:
         return self._services["task"]
 
     @property
+    def connection_manager(self):
+        if "connection_manager" not in self._services:
+            from src.services.connection_manager import connection_manager
+
+            self._services["connection_manager"] = connection_manager
+        return self._services["connection_manager"]
+
+    @property
     def checkpointer(self):
         if "checkpointer" not in self._services:
             from langchain.agent.checkpointer import InMemorySaver

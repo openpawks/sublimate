@@ -17,6 +17,8 @@ class MessageCreate(MessageBase):
 
 
 class MessageUpdate(MessageBase):
+    # NOTE: shouldn't this have message_id? someone should verify
+    # - remove comment if verified
     chat_id: int | None = Field(default=None)
     content: str | None = Field(max_length=4096, min_length=1, default=None)
     role: str | None = Field(max_length=10, min_length=0, default=None)
