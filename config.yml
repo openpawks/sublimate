@@ -1,3 +1,7 @@
+# Turn off my really cool startup screen
+# fun: no # make it fast
+#  - absolutely_not # just no fun i guess
+
 uvicorn:
   port: 8069
   host: 0.0.0.0
