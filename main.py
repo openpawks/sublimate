@@ -56,10 +56,10 @@ def main():
     # Let me have fun!
     if "absolutely_not" not in settings.get("fun", []) and not args.serious:
         print("\033[96m")
-        for index, char in enumerate(sublimate_text):
-            print(char, end="", flush=True)
+        for index, char in enumerate(sublimate_text.split("\n")):
+            print(char, end="\n", flush=True)
             if settings.get("fun", True) and not (args.onboard or args.server):
-                time.sleep(0.0005)
+                time.sleep(0.05)
 
         print("\033[1m", flush=True)
         for char in ">> IN ALPHA":
