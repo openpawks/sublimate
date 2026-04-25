@@ -1,5 +1,6 @@
 from src.db import models
 from src.schemas.provider import ProviderCreate, ProviderUpdate
+from src.schemas.data import ProviderData
 from src.db.database import get_db_session
 
 from sqlalchemy import select, update, delete
@@ -31,6 +32,13 @@ class ProviderService:
 
         if provider:
             return provider
+        else:
+            return None
+
+    async def get_provider_data(self, id: str):
+        provider = await self.get_provider()
+        if provider:
+            return ProviderData.model_validate(provider)
         else:
             return None
 

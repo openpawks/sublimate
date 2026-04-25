@@ -111,7 +111,7 @@ class BaseTask:
         # self.task_tools = [_create_tool(x) for x in self.task_tools]
 
         for agent in self.agents.values():
-            # agent.tools = self.task_tools
+            agent.tools = self.task_tools
             agent.agent = None
 
     def init_all(self):
@@ -122,7 +122,7 @@ class BaseTask:
         """
         Langchain's create_agent function, but task specific tools
         """
-        agent.init_agent(tools=[*self.task_tools, *agent.tools])
+        return agent.init_agent()
 
     # ========= AGENT TOOLS ==========
     def read_todos(self):
@@ -204,29 +204,50 @@ class BaseTask:
             )
         return joined
 
-    def tree(self, path_from: str = "./") -> str:
+    def tree(self, path_from: str = "./", follow_gitignore: bool = True) -> str:
         """
         Recursively list the directory structure starting from path_from (relative to root_dir).
         Returns a formatted string showing the tree. Prevents access outside root_dir.
 
         Args:
             path_from: relative directory path to start from (default: "./")
+            follow_gitignore: ignore files in gitignore, don't print those files that match patterns in gitignore if True
 
         Returns:
             A string representation of the directory tree.
         """
         import os
+        import subprocess
 
         target = self._resolve_path(path_from)
         if not os.path.isdir(target):
             return f"Error: '{path_from}' is not a directory or does not exist."
 
+        root = os.path.abspath(self._data.root_dir)
         lines = []
-        for root, dirs, files in os.walk(target):
-            rel = os.path.relpath(root, target)
+        for root_dir, dirs, files in os.walk(target):
+            if follow_gitignore:
+                # NOTE: doesn't use git python, we could use gitpython to improve readability
+                ignored = set(
+                    subprocess.run(
+                        [
+                            "git",
+                            "check-ignore",
+                            *[os.path.join(root_dir, d) for d in dirs],
+                            *[os.path.join(root_dir, f) for f in files],
+                        ],
+                        capture_output=True,
+                        text=True,
+                        cwd=root,
+                    ).stdout.splitlines()
+                )
+                dirs[:] = [d for d in dirs if os.path.join(root_dir, d) not in ignored]
+                files = [f for f in files if os.path.join(root_dir, f) not in ignored]
+
+            rel = os.path.relpath(root_dir, target)
             depth = 0 if rel == "." else rel.count(os.sep) + 1
             indent = "    " * depth
-            lines.append(f"{indent}{os.path.basename(root) if depth > 0 else '.'}/")
+            lines.append(f"{indent}{os.path.basename(root_dir) if depth > 0 else '.'}/")
             sub_indent = "    " * (depth + 1)
             for f in files:
                 lines.append(f"{sub_indent}{f}")

@@ -7,7 +7,7 @@ from langchain.agents.middleware import (
 )
 from langchain.chat_models import init_chat_model
 
-from src.schemas.data import AgentData
+from src.schemas.data import AgentData, ProviderData
 from src.services import registry
 
 from pathlib import Path
@@ -112,10 +112,12 @@ class AgentFactory:
         self._data = data
 
         self.name = self._data.name
-        self.provider_name = self._data.provider_id
+        self.provider_id = self._data.provider_id
         self.model_name = self._data.model_name
         self.prompt = self._data.prompt
         self.heartbeat_prompt = self._data.heartbeat_prompt
+
+        self.children = []
 
         try:
             self.kwargs = yaml.safe_load(self._data.settings_yaml or "") or {}
@@ -124,10 +126,28 @@ class AgentFactory:
 
         self.model = None
 
+    @property
+    def provider(self):
+        if not self._provider:
+            self._provider = registry.provider_service.get_provider_data(
+                self.provider_id
+            )
+
+        return self._provider
+
+    @provider.setter
+    def set_provider(self, provider: ProviderData):
+        self._provider = provider
+        # TODO: reinit chat model for agent factory AND children, reinit children!
+        # NOTE: rather important
+
     def init_chat_model(self):
+        # TODO: make this a @property and a setter and getter ig
         self.model = init_chat_model(
-            provider=self.provider_name,
+            provider=self.provider.name,
             model=self.model_name,
+            api_key=self.provider.api_key,
+            **yaml.safe_load(self.provider.settings_yaml),
             **self.kwargs.get("model", {}),
         )
 

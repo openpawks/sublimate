@@ -129,7 +129,6 @@ class TaskService:
     async def create_task(self, task: TaskCreate, db: AsyncSession):
         task_obj = await self.create_task_db(task, db)
         if task_obj:
-            # TODO: Tree ignore gitignore
             task = self._build_base_task(task_obj, db)
             task.chat.add_message(
                 db=db, role="system", content=task.tree(), username="system"

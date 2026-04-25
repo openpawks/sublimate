@@ -64,3 +64,13 @@ class AgentData(BaseModel):
     heartbeat_prompt: str
     settings_yaml: str | None
     created_at: datetime
+
+
+class ProviderData(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    nickname: str
+    name: str
+    api_key: str
+    settings_yaml: str
+    created_at: datetime

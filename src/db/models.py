@@ -204,6 +204,7 @@ class Provider(Base):
 
     name: Mapped[nickname]
     api_key: Mapped[str] = mapped_column(String(50), nullable=True)
+    settings_yaml: Mapped[settings_yaml]
 
     agents: Mapped[list["Agent"]] = relationship(back_populates="provider")
 
