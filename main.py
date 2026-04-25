@@ -11,7 +11,10 @@ from src.config import settings
 # - setting up deps for langchain (like langchain[deepseek] or langchain[ollama])
 # - setting up auth and admin users
 # - setting up database management and stuff
-# - setting up server and port, other stuff in config
+#   - sqlite, postgres (locally hosted) or postgres (abroad)
+# - login as user and add providers?
+# - setting up server and port, other stuff in config.yml
+
 sublimate_text = (
     r"""
                         88           88  88
@@ -74,7 +77,7 @@ def main():
     else:
         quickstart = (
             inquirer.list_input(
-                "Start server, or edit config", choices=["server", "config"]
+                "Start server, or edit config", choices=["server", "config", "quit"]
             )
             == "server"
         )
@@ -83,6 +86,8 @@ def main():
             start_server()
         else:
             onboard_dialog()
+
+    return
 
 
 if __name__ == "__main__":
