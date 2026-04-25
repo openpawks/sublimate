@@ -1,6 +1,7 @@
 import uvicorn
 import inquirer
 import time
+import argparse
 
 from src.backend.app import app
 from src.config import settings
@@ -27,35 +28,61 @@ aa    ]8I  "8a,   ,a88  88b,   ,a8"  88  88  88      88      88  88,    ,88    8
 )
 
 
-def main():
-    # Let me have fun!
+def start_server():
+    uvicorn.run(app, **settings.get("uvicorn"))
 
-    if "absolutely_not" not in settings.get("fun", []):
+
+def onboard_dialog():
+    print("Not implemented!")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-fr", "--serious", action="store_true", help="Be serious (no fun)"
+    )
+    parser.add_argument(
+        "-s", "--server", action="store_true", help="Start server, skip dialog"
+    )
+    parser.add_argument(
+        "-c", "--onboard", action="store_true", help="Skip dialog, edit config"
+    )
+    args = parser.parse_args()
+
+    # Let me have fun!
+    if "absolutely_not" not in settings.get("fun", []) and not args.serious:
         print("\033[96m")
         for index, char in enumerate(sublimate_text):
             print(char, end="", flush=True)
-            if settings.get("fun", True):
+            if settings.get("fun", True) and not (args.onboard or args.server):
                 time.sleep(0.0005)
 
         print("\033[1m", flush=True)
         for char in ">> IN ALPHA":
             print(char, end="", flush=True)
-            if settings.get("fun", True):
+            if settings.get("fun", True) and not (args.onboard or args.server):
                 time.sleep(0.09)
 
         print("\n")
 
-    quickstart = (
-        inquirer.list_input(
-            "Start server, or edit config", choices=["server", "config"]
-        )
-        == "server"
-    )
-
-    if quickstart:
-        uvicorn.run(app, **settings.get("uvicorn"))
+    if args.onboard or args.server:
+        if args.server:
+            start_server()
+        else:
+            onboard_dialog()
+        return
     else:
-        print("Not implemented!")
+        quickstart = (
+            inquirer.list_input(
+                "Start server, or edit config", choices=["server", "config"]
+            )
+            == "server"
+        )
+
+        if quickstart:
+            start_server()
+        else:
+            onboard_dialog()
 
 
 if __name__ == "__main__":
