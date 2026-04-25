@@ -2,9 +2,12 @@ from src.orchestration.agent import AgentFactory
 
 from src.schemas.data import TaskData
 from src.schemas.task import TaskUpdate
+from src.schemas.message import MessageCreate
 
 from git.exc import NoSuchPathError
 import git
+
+import yaml
 
 
 class BaseTask:
@@ -253,7 +256,7 @@ class BaseTask:
                 lines.append(f"{sub_indent}{f}")
         return "\n".join(lines)
 
-    def write_file(self, file_path: str):
+    def write_file(self, file_path: str, content: str):
         """
         Write content to a file. The file_path is relative to root_dir.
         Prompts the user for content via stdin. Prevents access outside root_dir.
@@ -265,7 +268,6 @@ class BaseTask:
 
         target = self._resolve_path(file_path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        content = input("Enter file content (Ctrl+D to finish):\n")
         with open(target, "w") as f:
             f.write(content)
 
@@ -285,16 +287,21 @@ class BaseTask:
         with open(target, "r") as f:
             return f.read()
 
-    def edit_file_lines(self, file_path: str, from_lines: int = 0, to_lines: int = 40):
+    def edit_file_lines(
+        self, file_path: str, from_lines: int, to_lines: int, content: str = ""
+    ):
         """
-        Read specific line range from a file and prompt the user to rewrite those lines.
-        The file_path is relative to root_dir. Prevents access outside root_dir.
-        Lines are 0-indexed. After user provides replacement content, the file is updated.
+        Replace lines in a file with new content. The file_path is relative to root_dir.
+        Prevents access outside root_dir. Lines are 0-indexed.
 
         Args:
-            file_path: relative path to the file
+            file_path: relative path to the file to edit
             from_lines: start line index (0-indexed, inclusive)
             to_lines: end line index (0-indexed, exclusive)
+            content: the new content to replace the selected lines with
+
+        Raises:
+            ValueError: if the line range is invalid or path escapes root_dir
         """
         target = self._resolve_path(file_path)
         with open(target, "r") as f:
@@ -305,30 +312,12 @@ class BaseTask:
                 f"Invalid line range: {from_lines}-{to_lines}. File has {len(all_lines)} lines."
             )
 
-        print(f"Current lines {from_lines}-{to_lines - 1}:")
-        for i in range(from_lines, to_lines):
-            print(f"{i}: {all_lines[i]}", end="")
-
-        print("\nEnter replacement content (Ctrl+D to finish):")
-        replacement = []
-        while True:
-            try:
-                line = input()
-                replacement.append(line)
-            except EOFError:
-                break
-
-        new_content = (
-            all_lines[:from_lines]
-            + [x + "\n" for x in replacement]
-            + all_lines[to_lines:]
-        )
+        replacement = content if content.endswith("\n") else content + "\n"
+        all_lines[from_lines:to_lines] = [replacement]
         with open(target, "w") as f:
-            f.writelines(new_content)
+            f.writelines(all_lines)
 
-    def read_file_lines(
-        self, file_path: str, from_lines: int = 0, to_lines: int = 40
-    ) -> str:
+    def read_file_lines(self, file_path: str, from_lines: int, to_lines: int) -> str:
         """
         Read specific lines from a file. The file_path is relative to root_dir.
         Prevents access outside root_dir. Lines are 0-indexed.
@@ -457,8 +446,6 @@ class BaseTask:
         Args:
             messages: optional extra messages if you want to prompt inject (not saved)
         """
-        if not agent.agent:
-            self.init_agent(agent)
         return agent.ainvoke(
             [*self.chat.get_messages(), *messages],
             config={"configurable": {"thread_id": self._data.chat_id}},
@@ -501,6 +488,8 @@ class BaseTask:
             db: database session
             max_iterations: How many messages until it stops automatically
         """
+        from src.services import registry
+
         if not self.repo:
             self.init_all()
 
@@ -520,14 +509,56 @@ class BaseTask:
             # this while true loop is more unneccessary than i thought,
             # maybe it should be a for loop for assigned agents?
             agent = self.get_active_agent()
-            output = await self.invoke_agent(self.agent, self.chat.get_messages())
+            # output = await self.invoke_agent(self.agent, self.chat.get_messages())
+            async for event in agent.astream_events(
+                {"messages": self.chat.get_messages()},
+                config={"configurable": {"thread_id": self._data.chat_id}},
+                version="v2",
+            ):
+                match event["event"]:
+                    case "on_chat_model_stream":
+                        if event["data"]["chunk"].content:
+                            await registry.connection_manager.broadcast_chunk_to_chat(
+                                # TODO: broadcast message chunk, needs message id right? or something
+                                # Maybe a new message chunk class
+                                {
+                                    "role": "assistant",
+                                    "chat_id": self._data.chat_id,
+                                    "content": event["data"]["chunk"].content,
+                                },
+                                self._data.chat_id,
+                            )
+                    case "on_tool_start":
+                        # get common tool calls
+                        content = "\n".join(
+                            [
+                                event["name"],  # function name
+                                yaml.dump(event["data"].get("input", {})),
+                            ]
+                        ).strip()[:4096]  # 4096 is message length
 
-            await self.chat.add_message(
-                db=db,
-                role="assistant",
-                content=output.content,
-                username=agent.name,
-            )
+                        await registry.connection_manager.broadcast_message_to_chat(
+                            # NOTE: ToolMessageCreate not implemented yet
+                            MessageCreate(
+                                chat_id=self._data.chat_id,
+                                role="system",
+                                content=content,
+                            )
+                        )
+
+                    case "on_tool_end":
+                        await registry.connection_manager.broadcast_message_to_chat(
+                            # NOTE: ToolMessageCreate not implemented yet
+                            MessageCreate(
+                                chat_id=self._data.chat_id,
+                                role="system",
+                                content=event["data"]
+                                .get("output", {})
+                                .get("content", "No output"),
+                            )
+                        )
+
+                # TODO: custom checkpointer so that it automatically saves to the database
             iteration += 1
 
             if iteration >= max_iterations:

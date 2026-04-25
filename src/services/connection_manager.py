@@ -101,6 +101,7 @@ class ConnectionManager:
         """
         Broadcast chunk to chat (like if the AI is streaming its message)
         """
+        # NOTE: placeholder
         await asyncio.gather(
             *[
                 asyncio.create_task(ws_conn.websocket.send_json(message_chunk))

@@ -40,13 +40,19 @@ class WorkerAgent:
         self.heartbeat_prompt = heartbeat_prompt
         self.root_dir = root_dir
 
-        self.agent = None
+        self._agent = None
+
+    @property
+    def agent(self):
+        if not self._agent:
+            self.init_agent()
+        return self._agent
 
     def init_agent(self, **kwargs):
         """
         Create the agent object, with tools and such
         """
-        self.agent = create_agent(
+        self._agent = create_agent(
             model=self.model,
             tools=self.tools,
             middleware=[
@@ -69,7 +75,7 @@ class WorkerAgent:
             system_prompt=self.prompt,
             checkpointer=registry.checkpointer**kwargs,
         )
-        return self.agent
+        return self._agent
 
     def ainvoke(self, messages: list, *args, **kwargs):
         """
@@ -78,7 +84,7 @@ class WorkerAgent:
         Args:
             messages: previous messages
         """
-        return self.agent.ainvoke(
+        return self._agent.ainvoke(
             {"messages": [{"role": "system", "content": self.prompt}, *messages]}
         )
 
