@@ -2,6 +2,7 @@ import uvicorn
 import inquirer
 import time
 import argparse
+import os
 
 from src.backend.app import app
 from src.config import settings
@@ -89,6 +90,7 @@ def main():
 
 
 if __name__ == "__main__":
+    os.system("cls" if os.name == "nt" else "clear")
     try:
         main()
     except KeyboardInterrupt:
