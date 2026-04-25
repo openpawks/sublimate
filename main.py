@@ -16,7 +16,7 @@ from src.config import settings
 # - login as user and add providers?
 # - setting up server and port, other stuff in config.yml
 
-sublimate_text = (
+large_sublimate_text = (
     r"""
                         88           88  88
                         88           88  ""                                    ,d
@@ -30,6 +30,42 @@ aa    ]8I  "8a,   ,a88  88b,   ,a8"  88  88  88      88      88  88,    ,88    8
 
 """
 )
+
+small_sublimate_text = r"""
+            _     _ _                 _
+___ _   _| |__ | (_)_ __ ___   __ _| |_ ___
+/ __| | | | '_ \| | | '_ ` _ \ / _` | __/ _ \
+\__ \ |_| | |_) | | | | | | | | (_| | ||  __/
+|___/\__,_|_.__/|_|_|_| |_| |_|\__,_|\__\___|
+    """
+
+tiny_sublimate_text = """
+Sublimate
+  * * * *
+   * *
+**     *
+      *
+* *
+   *   *
+ *   *
+        *
+
+
+
+    *
+
+
+
+        *
+ *   *
+   *   *
+* *
+      *
+**     *
+   * *
+  * * * *
+Snplᴉɯɐʇǝ
+"""
 
 
 def start_server():
@@ -56,6 +92,13 @@ def main():
     # Let me have fun!
     if "absolutely_not" not in settings.get("fun", []) and not args.serious:
         print("\033[96m")
+        term_size = os.get_terminal_size().columns
+        if term_size > max([len(x) for x in large_sublimate_text.split("\n")]):
+            sublimate_text = large_sublimate_text
+        elif term_size > max([len(x) for x in small_sublimate_text.split("\n")]):
+            sublimate_text = small_sublimate_text
+        else:
+            sublimate_text = tiny_sublimate_text
         for index, char in enumerate(sublimate_text.split("\n")):
             print(char, end="\n", flush=True)
             if settings.get("fun", True) and not (args.onboard or args.server):
