@@ -71,22 +71,34 @@ User context is inferred from auth (JWT/session), not from URL path.
 | CRUD chats | Y |
 | CRUD messages | Y |
 | CRUD providers | Y |
+| Frontend | N |
+| TUI | N |
 
 # Non Functional Features
 | FEATURE | IMPLEMENTED |
 |-|-|
-| Multi user systems: create remove update accounts | N |
+| Multi user systems: create remove update accounts, with modern authentication | N |
+| git integration, serve git from /git/ as an option - although this risks bloat, it would be very useful for new users to be able to manage their repos, should probably make user.name a unique field, also make root user on onboarding and prompt set password | N |
+| simple git management in UI so that you can push, pull merge and stuff simply from sublimate, very useful for new users especially | N |
+| forgot password reset, although encrypted stuff will be lost | N |
+| user gets encryption options if they want | N |
+| Api key encryption by user password hash & salt so master user can't see other people's API keys, useful if we want to serve this | N |
+| `sublimate-agent` much like opencode or claude code just normal, single threaded local user coding, still can run sublimate server or save to user db, just as root account (and don't allow signups and stuff, serve on different port) | N |
+| MCP integration, from /mcp/* endpoints | N |
+| docker lmao | N |
 
 # Datastorage prototype (to store data generated or in use by sublimate)
+## Multi user
 ```
-~/.sublimate/
-|-  projects/
-    |-  {project_name}.git/ # bare repository
-        |-  sublimate/
-            |-  {branch_name}
-|-  postgres/
+~/.sublimate/ # SERVER
+  |- /u/{user_name}/{project_name}/
+    |- .git/
+    |- {branch/task names}/
+  |- postgres/ (in future)
+  |- sublimate.db
 ```
 
-# Web layout
-Coming soon!
-![Web layout](docs/imgs/web_layout_plan.png)
+## Single user (mostly just if people _just_ want the coding agent, and nothing else, like opencode/claude-code alternative - no need to start the whole server!)
+```
+~/.config/sublimate/sublimate.json # SINGLE USER, API keys
+```

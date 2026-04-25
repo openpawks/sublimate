@@ -1,4 +1,4 @@
-from langchain.agent.checkpointer import InMemorySaver
+from langgraph.checkpoint.memory import InMemorySaver
 
 # TODO: make this some sort of custom checkpointer OR just use the sqlite saver. You can do this!
 # Please please get it done I'll be super proud!

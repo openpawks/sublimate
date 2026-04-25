@@ -5,8 +5,9 @@ from langchain.agents.middleware import (
     ModelRetryMiddleware,
     FilesystemFileSearchMiddleware,
 )
-from langchain.chat_models import init_chat_model
+from langgraph.checkpoint.memory import InMemorySaver
 
+from langchain.chat_models import init_chat_model
 from src.schemas.data import AgentData, ProviderData
 from src.services import registry
 
@@ -23,6 +24,7 @@ class WorkerAgent:
         name: str = "",
         prompt: str = "",
         heartbeat_prompt: str = "",
+        checkpointer=None,
     ):
         """
         An agent that tasks will call upon. This agent will write files and run commands and such
@@ -39,6 +41,7 @@ class WorkerAgent:
         self.tools = []
         self.heartbeat_prompt = heartbeat_prompt
         self.root_dir = root_dir
+        self.checkpointer = checkpointer or InMemorySaver()
 
         self._agent = None
 
@@ -73,7 +76,8 @@ class WorkerAgent:
                 ),
             ],
             system_prompt=self.prompt,
-            checkpointer=registry.checkpointer**kwargs,
+            checkpointer=self.checkpointer,
+            **kwargs,
         )
         return self._agent
 
@@ -122,6 +126,7 @@ class AgentFactory:
         self.model_name = self._data.model_name
         self.prompt = self._data.prompt
         self.heartbeat_prompt = self._data.heartbeat_prompt
+        self.checkpointer = registry.checkpointer
 
         self.children = []
 
@@ -171,4 +176,5 @@ class AgentFactory:
             name=self.name,
             prompt=self.prompt,
             heartbeat_prompt=self.heartbeat_prompt,
+            checkpointer=self.checkpointer,
         )
