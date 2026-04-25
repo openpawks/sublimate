@@ -75,17 +75,15 @@ def main():
             onboard_dialog()
         return
     else:
-        quickstart = (
-            inquirer.list_input(
-                "Start server, or edit config", choices=["server", "config", "quit"]
-            )
-            == "server"
+        user_input = inquirer.list_input(
+            "Start server, or edit config", choices=["server", "config", "quit"]
         )
 
-        if quickstart:
-            start_server()
-        else:
-            onboard_dialog()
+        match user_input:
+            case "server":
+                start_server()
+            case "config":
+                onboard_dialog()
 
     return
 
