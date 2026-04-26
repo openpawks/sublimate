@@ -6,6 +6,7 @@ from datetime import datetime, UTC
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import String, DateTime, ForeignKey, Boolean, Table, Column
+from sqlalchemy import JSON as SQLA_JSON
 
 from .database import Base
 
@@ -126,6 +127,20 @@ class Message(Base):
     sender: Mapped["Sender"] = relationship(back_populates="messages")
 
     content: Mapped[message_content]
+
+    created_at: Mapped[created_at]
+
+
+class CheckpointState(Base):
+    __tablename__ = "checkpoint_states"
+
+    thread_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(String(256), primary_key=True)
+    checkpoint_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    parent_checkpoint_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    checkpoint: Mapped[dict] = mapped_column(SQLA_JSON)
+    checkpoint_metadata: Mapped[dict] = mapped_column("metadata", SQLA_JSON)
+    pending_writes: Mapped[list | None] = mapped_column(SQLA_JSON, nullable=True)
 
     created_at: Mapped[created_at]
 

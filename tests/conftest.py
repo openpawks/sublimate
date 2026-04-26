@@ -87,6 +87,7 @@ async def clean_database(async_session):
 
     # Delete all data from tables in dependency order
     tables = [
+        "checkpoint_states",
         "messages",
         "senders",
         "task_to_agent",
