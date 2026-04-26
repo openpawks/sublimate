@@ -5,27 +5,27 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "aiosqlite>=0.20.0",
-    "anyio>=4.13.0",
-    "argparse>=1.4.0",
-    "black>=26.3.1",
-    "croniter>=6.2.2",
-    "dotenv>=0.9.9",
-    "fastapi[standard]>=0.135.3",
-    "git-python>=1.0.3",
-    "gitpython>=3.1.46",
-    "inquirer>=3.4.1",
-    "langchain[ollama]>=1.2.15",
-    "langgraph>=1.1.6",
-    "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "pytest-cov>=7.1.0",
-    "pytest-git>=1.8.0",
-    "pytest-html>=4.2.0",
-    "pyyaml>=6.0.3",
-    "ruff>=0.15.9",
-    "sqlalchemy>=2.0.0",
+  "aiosqlite>=0.20.0",
+  "anyio>=4.13.0",
+  "argparse>=1.4.0",
+  "black>=26.3.1",
+  "croniter>=6.2.2",
+  "dotenv>=0.9.9",
+  "fastapi[standard]>=0.135.3",
+  "git-python>=1.0.3",
+  "gitpython>=3.1.46",
+  "inquirer>=3.4.1",
+  "langchain[ollama]>=1.2.15",
+  "langgraph-checkpoint-conformance>=0.0.2",
+  "pre-commit>=4.5.1",
+  "pytest>=9.0.2",
+  "pytest-asyncio>=1.3.0",
+  "pytest-cov>=7.1.0",
+  "pytest-git>=1.8.0",
+  "pytest-html>=4.2.0",
+  "pyyaml>=6.0.3",
+  "ruff>=0.15.9",
+  "sqlalchemy>=2.0.0",
 ]
 
 [tool.pytest.ini_options]
@@ -33,13 +33,13 @@ minversion = "7.0"
 asyncio_mode = "auto"
 
 adopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--tb=short",
-    "--cov=src",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "-ra",
+  "--strict-markers",
+  "--strict-config",
+  "--tb=short",
+  "--cov=src",
+  "--cov-report=term-missing",
+  "--cov-report=html",
+  "-ra",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
@@ -52,14 +52,12 @@ omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]
 exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
 ]
 
 [dependency-groups]
-dev = [
-    "gitpython>=3.1.46",
-]
+dev = ["gitpython>=3.1.46"]

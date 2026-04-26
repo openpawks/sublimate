@@ -839,6 +839,18 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-checkpoint-conformance"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langgraph-checkpoint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/da/93e4e31f1f64eb12eb9b1a721161708ed7cdcacf9a105d6f6c203f903721/langgraph_checkpoint_conformance-0.0.2.tar.gz", hash = "sha256:6718e00937bf2f04cdfd2cdfabea23e1dabb79a534ff4c127f305f6b40dad4e0", size = 93726, upload-time = "2026-04-08T23:02:08.74Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/ed/27dc4ce19f9c848521e45cbf778b1a8d8d774fa468bab67f5a5fd51e9fe0/langgraph_checkpoint_conformance-0.0.2-py3-none-any.whl", hash = "sha256:c112ddc0416b097c90a145fd1908ba570db4cba209e1ae0330205e9f466ad4f9", size = 28425, upload-time = "2026-04-08T23:02:07.668Z" },
+]
+
+[[package]]
 name = "langgraph-prebuilt"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -975,7 +987,7 @@ dependencies = [
     { name = "gitpython" },
     { name = "inquirer" },
     { name = "langchain", extra = ["ollama"] },
-    { name = "langgraph" },
+    { name = "langgraph-checkpoint-conformance" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1005,7 +1017,7 @@ requires-dist = [
     { name = "gitpython", specifier = ">=3.1.46" },
     { name = "inquirer", specifier = ">=3.4.1" },
     { name = "langchain", extras = ["ollama"], specifier = ">=1.2.15" },
-    { name = "langgraph", specifier = ">=1.1.6" },
+    { name = "langgraph-checkpoint-conformance", specifier = ">=0.0.2" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
