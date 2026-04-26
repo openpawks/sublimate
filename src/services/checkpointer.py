@@ -15,6 +15,19 @@ from sqlalchemy import select, delete
 
 
 def _extract_messages_from_checkpoint(checkpoint: Checkpoint) -> list[dict]:
+    """
+    Extract and format messages from a checkpoint's channel values.
+
+    Converts LangChain message objects or dictionaries into a standardized format
+    with 'role' and 'content' fields. Handles tool calls by converting them to
+    text representations.
+
+    Args:
+        checkpoint: The checkpoint containing messages in channel_values
+
+    Returns:
+        List of dictionaries with 'role' and 'content' keys, formatted for database storage
+    """
     messages = checkpoint.get("channel_values", {}).get("messages", [])
     result = []
     for msg in messages:
@@ -63,6 +76,15 @@ def _extract_messages_from_checkpoint(checkpoint: Checkpoint) -> list[dict]:
 
 
 def _get_chat_id_from_thread_id(thread_id: str) -> int | None:
+    """
+    Convert a thread ID string to an integer chat ID.
+
+    Args:
+        thread_id: The thread ID string to convert
+
+    Returns:
+        Integer chat ID if conversion succeeds, None otherwise
+    """
     try:
         return int(thread_id)
     except (ValueError, TypeError):
@@ -70,19 +92,53 @@ def _get_chat_id_from_thread_id(thread_id: str) -> int | None:
 
 
 class MyCheckpointer(BaseCheckpointSaver):
+    """
+    A custom checkpoint saver for LangGraph that persists checkpoints to a SQL database.
+
+    This checkpoint saver integrates with the application's database to store and retrieve
+    checkpoint states. It automatically syncs messages from checkpoints to the message
+    service and manages checkpoint state records with parent-child relationships.
+
+    The checkpointer uses thread_id as the primary identifier for conversation threads
+    and maintains checkpoint metadata including timestamps and parent references.
+    """
+
     def __init__(self):
+        """Initialize the checkpoint saver with base class initialization."""
         super().__init__()
 
     async def __aenter__(self):
+        """Async context manager entry method."""
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit method."""
         return False
 
     def _get_thread_id(self, config: RunnableConfig) -> str:
+        """
+        Extract the thread ID from a runnable configuration.
+
+        Args:
+            config: Runnable configuration containing thread_id in configurable dict
+
+        Returns:
+            The thread ID string
+        """
         return config["configurable"]["thread_id"]
 
     async def _sync_messages(self, config: RunnableConfig, checkpoint: Checkpoint):
+        """
+        Synchronize messages from a checkpoint to the database.
+
+        Extracts messages from the checkpoint and saves them to the database using
+        the message service. Prevents duplicate messages by checking existing messages
+        based on role and content combination.
+
+        Args:
+            config: Runnable configuration containing thread_id
+            checkpoint: Checkpoint containing messages to sync
+        """
         from src.db.database import get_db_session
         from src.schemas.message import MessageCreate
         from src.schemas.data import MessageData
@@ -136,6 +192,22 @@ class MyCheckpointer(BaseCheckpointSaver):
         metadata: CheckpointMetadata,
         new_versions: ChannelVersions,
     ) -> RunnableConfig:
+        """
+        Save a checkpoint asynchronously.
+
+        Stores the checkpoint state in the database. If a checkpoint with the same
+        ID already exists, it is deleted before creating the new one. Also syncs
+        messages from the checkpoint to the message service.
+
+        Args:
+            config: Runnable configuration with thread_id and optionally checkpoint_ns
+            checkpoint: The checkpoint data to save
+            metadata: Metadata associated with the checkpoint
+            new_versions: Channel version information (unused in this implementation)
+
+        Returns:
+            RunnableConfig containing the updated configuration with checkpoint_id
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
@@ -184,6 +256,18 @@ class MyCheckpointer(BaseCheckpointSaver):
         }
 
     async def aget(self, config: RunnableConfig) -> Checkpoint | None:
+        """
+        Retrieve a checkpoint asynchronously.
+
+        Fetches a checkpoint by its configuration. If no checkpoint_id is specified,
+        returns the most recent checkpoint for the thread.
+
+        Args:
+            config: Runnable configuration with thread_id and optional checkpoint_id
+
+        Returns:
+            The requested Checkpoint object, or None if not found
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
@@ -210,6 +294,19 @@ class MyCheckpointer(BaseCheckpointSaver):
         return None
 
     async def aget_tuple(self, config: RunnableConfig) -> CheckpointTuple | None:
+        """
+        Retrieve a checkpoint tuple asynchronously.
+
+        Fetches a checkpoint along with its configuration, metadata, parent reference,
+        and pending writes. Parent configuration is automatically resolved if
+        parent_checkpoint_id exists.
+
+        Args:
+            config: Runnable configuration with thread_id and optional checkpoint_id
+
+        Returns:
+            CheckpointTuple containing checkpoint data and metadata, or None if not found
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
@@ -265,6 +362,22 @@ class MyCheckpointer(BaseCheckpointSaver):
         before: RunnableConfig | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[CheckpointTuple]:
+        """
+        List checkpoints asynchronously.
+
+        Returns an async iterator of checkpoint tuples for a thread, ordered by creation
+        time descending. Supports filtering by metadata, limiting results, and listing
+        only checkpoints before a specific checkpoint.
+
+        Args:
+            config: Runnable configuration with thread_id (or None for no results)
+            filter: Optional dictionary of metadata key-value pairs to filter by
+            before: Optional configuration specifying a checkpoint to list before
+            limit: Maximum number of checkpoints to return
+
+        Yields:
+            CheckpointTuple objects matching the query criteria
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
@@ -350,6 +463,19 @@ class MyCheckpointer(BaseCheckpointSaver):
         task_id: str,
         task_path: str = "",
     ) -> None:
+        """
+        Save pending writes for a checkpoint asynchronously.
+
+        Stores writes (channel updates) that are pending for a checkpoint. Prevents
+        duplicate writes by checking existing pending writes for the same task_id,
+        channel, and value combination.
+
+        Args:
+            config: Runnable configuration with thread_id and checkpoint_id
+            writes: Sequence of (channel, value) tuples to save
+            task_id: Identifier for the task creating these writes
+            task_path: Optional path information for the task (unused)
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
@@ -389,6 +515,14 @@ class MyCheckpointer(BaseCheckpointSaver):
         self,
         thread_id: str,
     ) -> None:
+        """
+        Delete all checkpoints for a thread asynchronously.
+
+        Removes all checkpoint states associated with the given thread_id from the database.
+
+        Args:
+            thread_id: The thread identifier whose checkpoints should be deleted
+        """
         from src.db.database import get_db_session
         from src.db.models import CheckpointState
 
