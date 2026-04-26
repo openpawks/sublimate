@@ -33,7 +33,4 @@ class BaseChat:
         from src.services import registry
 
         new_message = MessageCreate(chat_id=self._data.id, *args, **kwargs)
-        msg = await registry.message_service.create_message(new_message, db=db)
-        if msg:
-            self._messages.append({"role": msg.role, "content": msg.content})
-            await registry.connection_manager.broadcast_message_chat(new_message)
+        return await registry.message_service.create_message(new_message, db=db)
