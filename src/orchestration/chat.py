@@ -1,4 +1,4 @@
-from src.schemas.data import ChatData
+from src.schemas.data import ChatData, MessageData
 from src.schemas.message import MessageCreate
 
 
@@ -7,11 +7,18 @@ class BaseChat:
         self._data = data
         self._messages = messages or []
 
-    def get_messages(self):
-        """
-        Get messages from chat
-        """
-        return self._messages
+    async def get_messages(self, db=None, *args, **kwargs) -> list[MessageData]:
+        from src.db.database import get_db_session
+        from src.services.registry import registry
+
+        db = db or await get_db_session()
+        self._messages = [
+            MessageData.model_validate(msg)
+            for msg in await registry.message_service.get_messages_by_chat(
+                chat_id=self._data.id, db=db
+            )
+        ]
+        return [msg.model_dump(*args, **kwargs) for msg in self._messages]
 
     async def add_message(self, db, broadcast: bool = True, *args, **kwargs):
         """
@@ -29,4 +36,4 @@ class BaseChat:
         msg = await registry.message_service.create_message(new_message, db=db)
         if msg:
             self._messages.append({"role": msg.role, "content": msg.content})
-            registry.connection_manager.broadcast_message_chat(new_message)
+            await registry.connection_manager.broadcast_message_chat(new_message)

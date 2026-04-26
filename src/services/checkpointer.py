@@ -85,6 +85,8 @@ class MyCheckpointer(BaseCheckpointSaver):
     async def _sync_messages(self, config: RunnableConfig, checkpoint: Checkpoint):
         from src.db.database import get_db_session
         from src.db.models import Message
+        from src.schemas.message import MessageCreate
+        from src.services.registry import registry
 
         thread_id = self._get_thread_id(config)
         chat_id = _get_chat_id_from_thread_id(thread_id)
@@ -96,8 +98,12 @@ class MyCheckpointer(BaseCheckpointSaver):
             return
 
         db = await get_db_session()
+        messages_to_create = []
+
         for msg in messages:
-            if len(msg["content"]) > 4000:
+            if len(msg["content"]) > 4096:
+                # TODO: split into multiple messages
+                # OR truncate it
                 continue
 
             existing = await db.execute(
@@ -110,12 +116,13 @@ class MyCheckpointer(BaseCheckpointSaver):
             if existing.scalars().first():
                 continue
 
-            message_obj = Message(
-                content=msg["content"],
-                role=msg["role"],
-                chat_id=chat_id,
+            messages_to_create.append(
+                MessageCreate(content=msg["content"], role=msg["role"], chat_id=chat_id)
             )
-            db.add(message_obj)
+
+        await registry.message_service.create_messages(
+            messages=messages_to_create, db=db
+        )
 
         await db.commit()
 

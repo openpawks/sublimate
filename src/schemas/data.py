@@ -74,3 +74,12 @@ class ProviderData(BaseModel):
     api_key: str
     settings_yaml: str
     created_at: datetime
+
+
+class MessageData(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    role: str
+    chat_id: int
+    content: str
+    created_at: datetime

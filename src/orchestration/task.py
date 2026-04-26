@@ -435,7 +435,7 @@ class BaseTask:
         agent = self.get_agent(name)
         return self.invoke_agent(agent, *args, **kwargs)
 
-    def invoke_agent(self, agent, messages: list[dict] = []):
+    async def invoke_agent(self, agent, messages: list[dict] = []):
         """
         Invoke an agent with the task's chat history.
         You should use this as opposed to directly
@@ -447,15 +447,15 @@ class BaseTask:
             messages: optional extra messages if you want to prompt inject (not saved)
         """
         return agent.ainvoke(
-            [*self.chat.get_messages(), *messages],
+            [*(await self.chat.get_messages()), *messages],
             config={"configurable": {"thread_id": self._data.chat_id}},
         )
 
-    def get_messages(self, *args, **kwargs):
+    async def get_messages(self, *args, **kwargs):
         """
         Get the task's chat history
         """
-        return self.chat.get_messages(*args, **kwargs)
+        return await self.chat.get_messages(*args, **kwargs)
 
     def was_created_at(self):
         return self.chat.was_created_at()
@@ -500,7 +500,6 @@ class BaseTask:
             self.repeating_until_complete and self.open and iteration < max_iterations
         ):
             # TODO:
-            # - stream this agent.invoke
             # - on task initation, run tree automatically and add that as message,
             #   - must check if not already been sent,
             #   - or if detects changes not managed by task, resend new
@@ -511,7 +510,7 @@ class BaseTask:
             agent = self.get_active_agent()
             # output = await self.invoke_agent(self.agent, self.chat.get_messages())
             async for event in agent.astream_events(
-                {"messages": self.chat.get_messages()},
+                {"messages": await self.chat.get_messages(include={"role", "content"})},
                 config={"configurable": {"thread_id": self._data.chat_id}},
                 version="v2",
             ):

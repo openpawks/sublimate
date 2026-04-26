@@ -290,7 +290,7 @@ async def test_checkpointer_messages_appear_in_chat_service(async_session, test_
 
     chat = await chat_service.get_chat_by_id(test_chat.id, async_session)
     assert chat is not None
-    msgs = chat.get_messages()
+    msgs = await chat.get_messages()
     assert any(m["content"] == "checkpointed msg" for m in msgs)
 
 

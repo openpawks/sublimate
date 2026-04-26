@@ -182,12 +182,12 @@ async def repeat_until_complete(self, db, max_iterations=100, event_emitter=None
 
             full_content = ""
             if event_emitter:
-                async for event in agent.astream(self.chat.get_messages()):
+                async for event in agent.astream(await self.chat.get_messages()):
                     await event_emitter(event)
                     if event["type"] == "token":
                         full_content += event["data"]["content"]
             else:
-                output = await self.invoke_agent(agent, self.chat.get_messages())
+                output = await self.invoke_agent(agent, await self.chat.get_messages())
                 full_content = output.content
 
             await self.chat.add_message(db=db, role="assistant", content=full_content, username=agent.name)
