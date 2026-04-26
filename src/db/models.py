@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 from datetime import datetime, UTC
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import String, DateTime, ForeignKey, Boolean, Table, Column
+from sqlalchemy import String, DateTime, ForeignKey, Boolean, Table, Column, Text
 from sqlalchemy import JSON as SQLA_JSON
 
 from .database import Base
@@ -27,7 +27,7 @@ str_256 = Annotated[str, mapped_column(String(256))]
 
 nickname = Annotated[str, mapped_column(String(50), default="")]
 
-message_content = Annotated[str, mapped_column(String(4096))]
+message_content = Annotated[str, mapped_column(Text)]
 
 settings_yaml = Annotated[Optional[str], mapped_column(String(2048), default="")]
 
