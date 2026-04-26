@@ -107,6 +107,7 @@ class MyCheckpointer(BaseCheckpointSaver):
                 chat_id=chat_id, db=db
             )
         ]
+
         chat_messages_hashmap = {f"{m.role}{m.content}" for m in chat_messages}
 
         for msg in messages:
